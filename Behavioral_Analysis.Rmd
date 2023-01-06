@@ -1,6 +1,6 @@
 ---
 title: "Analyse des données comportementales"
-subtitle: "Mémoire – Master 1 Sciences Cognitives"
+subtitle: "Statistiques descriptives, inférentielles & régressions"
 author: "<i>Astrid Thébault Guiochon</i>"
 output: 
   html_document:
@@ -11,12 +11,11 @@ output:
     # number_sections: true  # numéroter les titres
     theme: lumen #united (orange mais le gras ne se voit pas)
     highlight: kate #thème du code
-runtime: shiny
 tags: [knitr, servr]
 ---
 
 ```{r setup, include = FALSE}
-options(knitr.kable.NA = '')
+options(knitr.kable.NA = '', knitr.table.format = "html")
 knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
 ```
 
@@ -43,15 +42,19 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
     tinytex::install_tinytex()
     install.packages("corrplot")
     install.packages("dplyr")
+    install.packages("expss")
     install.packages("ggpubr")
     install.packages("gtsummary")  
     install.packages("Hmisc")
     install.packages("kableExtra")
     install.packages("knitr")
+    install.packages("labelled")
     install.packages("magrittr")
     install.packages("psych")
     install.packages("purrr")
+    install.packages("RCurl")
     install.packages("skimr")
+    install.packages("sjlabelled")
     install.packages("sjPlot")
     install.packages("tidyverse")
 
@@ -62,15 +65,19 @@ On déclare les librairies qu'on utilise et permettent d'appeler des fonctions p
 ```{r libraries}
 library(corrplot)
 library(dplyr)
+library(expss)
 library(ggpubr)
 library(gtsummary)  
 library(Hmisc)
 library(kableExtra)
 library(knitr)
+library(labelled)
 library(magrittr)
 library(psych)
 library(purrr)
+library(RCurl)
 library(skimr)
+library(sjlabelled)
 library(sjPlot)
 library(tidyverse)
 ```
@@ -90,7 +97,8 @@ library(tidyverse)
 💡 *Si jamais il importe les données en un gros bloc au lieu d'un tableau, remplacer le sep = ";" par sep = "," (dépend de la version d'Excel et comment il exporte en .csv).*
 
 ```{r file}
-data = read.csv(file = "Comptage.csv", sep = ";", check.names = F, header = TRUE) 
+git_file <- 'https://raw.githubusercontent.com/astridgcn/R-Behavioral-Analysis/main/Comptage.csv'
+data = read.csv(file = git_file, sep = ";", check.names = F, header = TRUE) 
 ```
 
 ## 4. Préparation des données
@@ -98,14 +106,88 @@ data = read.csv(file = "Comptage.csv", sep = ";", check.names = F, header = TRUE
 Transformation des données dans les bons formats
 
 ```{r factorize}
-data$Condition <- as.factor(data$Condition)
-data$Sexe <- as.factor(data$Sexe)
+data$Condition <- factor(data$Condition, labels = c("Agression", "Téléphone") )
+data$Sexe <- factor(data$Sexe, 
+                    labels = c("Féminin", "Masculin"))
 ```
 
 Filtrage des données vides
 
 ```{r filter}
 data <- filter(data, data$Total_SM > 0)
+```
+
+Étiquette de noms des données
+
+```{r labels}
+#apply_labels
+var_label(data) <- list(Sexe = "Sexe",
+                         Condition = "Condition",
+                         Haut_visage = "Nombre de mouvements du haut du visage à l'arrêt 1",
+                         Bas_visage = "Nombre de mouvements du bas du visage à l'arrêt 1",
+                         Clignements = "Nombre de clignements des yeux à l'arrêt 1",
+                         Yeux = "Nombre de mouvements des yeux à l'arrêt 1",
+                         Tete = "Nombre de mouvements de la tête à l'arrêt 1",
+                         Buste = "Nombre de mouvements du buste à l'arrêt 1",
+                         Bras = "Nombre de mouvements des bras à l'arrêt 1",
+                         Mains = "Nombre de mouvements des mains à l'arrêt 1",
+                         Jambes = "Nombre de mouvements des jambes à l'arrêt 1",
+                         Pieds = "Nombre de mouvements des pieds à l'arrêt 1",
+                         Self_Adaptators = "Nombre de self-adaptators à l'arrêt 1",
+                         Pas_P1_P2 = "Nombre de pas entre l'arrêt 1 et l'arrêt 2",
+                         Temps_P1_P2 = "Temps entre l'arrêt 1 et l'arrêt 2",
+                         Vitesse_P1_P2 = "Vitesse entre l'arrêt 1 et l'arrêt 2",
+                           
+                         Haut_visage2 = "Nombre de mouvements du haut du visage à l'arrêt 2",
+                         Bas_visage2 = "Nombre de mouvements du bas du visage à l'arrêt 2",
+                         Clignements2 = "Nombre de clignements des yeux à l'arrêt 2",
+                         Yeux2 = "Nombre de mouvements des yeux à l'arrêt 2",
+                         Tete2 = "Nombre de mouvements de la tête à l'arrêt 2",
+                         Buste2 = "Nombre de mouvements du buste à l'arrêt 2",
+                         Bras2 = "Nombre de mouvements des bras à l'arrêt 2",
+                         Mains2 = "Nombre de mouvements des mains à l'arrêt 2",
+                         Jambes2 = "Nombre de mouvements des jambes à l'arrêt 2",
+                         Pieds2 = "Nombre de mouvements des pieds à l'arrêt 2",
+                         Self_Adaptators2 = "Nombre de self-adaptators à l'arrêt 2",
+                         Pas_P2_Cible = "Nombre de pas entre l'arrêt 2 et la cible",
+                         Temps_P2_Cible = "Temps entre l'arrêt 2 et la cible",
+                         Vitesse_P2_Cible = "Vitesse entre l'arrêt 2 et la cible",
+                         
+                         EAFF_BES = "Score d'empathie affective (BES)",
+                         Ecog_BES = "Score d'empathie cognitive (BES)",
+                         CogSc_BES = "Score d'aspects cognitifs (BES)",
+                         ContSc_BES = "Score de contagion émotionnelle (BES)",
+                         DecoSc_BES = "Score de déconnexion émotionnelle (BES)",
+                         Total_BES = "Score total à la BES (Échelle d'Empathie)",
+                         
+                         Machiavelisme_DDS = "Score de machiavélisme (DDS)",
+                         Psychopathie_DDS = "Score de psychopathie (DDS)",
+                         Narcissisme_DDS = "Score de machiavélisme (DDS)",
+                         Total_DDS = "Score total à la DDS (Triade Sombre)",
+                         
+                         R_QI = "Score de réponses à la QPM38 (Matrices de Raven)",
+                         QPM38_QI = "Score à la QPM38 (Matrices de Raven)",
+                         Centile_QI = "Score à la QPM38 (Matrices de Raven)",
+                         
+                         Activation_Generale_Trait_ADCL = "Score d'activation générale trait (ADCL)",
+                         Serenite_Trait_ADCL = "Niveau de sérénité trait (ADCL)",
+                         Anxiete_Trait_ADCL = "Niveau d'anxeité trait (ADCL)",
+                         Autres_ADCL = "Autres niveaux (ADCL)",
+                         Activation_Etat_ADCL = "Score d'activation générale état (ADCL)",
+                         Serenite_Etat_ADCL = "Niveau de sérénité état (ADCL)",
+                         Fatigue_Etat_ADCL = "Niveau de fatigue état (ADCL)",
+                         Excitation_ADCL = "Niveau d'arousal (ADCL)",
+                         
+                         Extraversion_BFI = "Score d'extraversion (BFI)",
+                         Agreabilite_BFI = "Score d'agréabilité (BFI)",
+                         Conscienseuxse_BFI = "Score de conscienciosité (BFI)",
+                         Nevrotisme_BFI = "Score de névrotisme (BFI)",
+                         Ouverture_Esprit_BFI = "Score d'ouverture d'esprit (BFI)",
+                         
+                         Comedie_SM = "Score de comédie (SM)",
+                         Extraversion_SM = "Score d'extraversion (SM)",
+                         PresDeSoi_SM = "Score de présentation de soi (SM)",
+                         Total_SM = "Score total SM (Self-Monitoring)") # Nom des variables
 ```
 
 ## 5. Affichage des données
@@ -128,32 +210,34 @@ dt_Data %>%
 Résumé statistique des données
 
 ```{r print-summary-data}
-summary(data[,-1]) %>%
+summary(data[,! names(data) %in% c("Code")]) %>%
   kbl(caption = "<b>Résumé statistique du jeu de données.</b>") %>%  # Légende
   kable_material(full_width = F) %>%  # Taille et style
   kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>% # Options de surlignage et rayures
   scroll_box(width = "100%") # Barre de défilement
 ```
-&nbsp; 
+
+ 
 
 Résumé statistique des données selon le <i>Sexe</i>
 
 ```{r summary-data-sex}
 #summary(data[,-1]) %>% split(.$Sexe) %>% map(summary)
 #describeBy(data[,-1], data$Sexe)
-dt_Sum_data_sex <- data[,-1] %>%
+dt_Sum_data_sex <- data[,] %>%
   group_by(Sexe) %>%
   skim() 
 
 dt_Sum_data_sex <- dt_Sum_data_sex[-c(1,2),c(2:3,9:10,12:14,16)]
 colnames(dt_Sum_data_sex) <- c("Variable", "Sexe", "Moyenne", "Écart-Type", "Q1", "Médiane", "Q3", "Histogramme")
-dt_Sum_data_sex%>%
+dt_Sum_data_sex %>%
   kbl(caption = "<b>Résumé statistique du jeu de données selon le <i>Sexe</i>.</b>") %>%  # Légende
   kable_material(full_width = F) %>%  # Taille et style
   kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>% # Options de surlignage et rayures
   scroll_box(width = "100%", height = "400px") # Barres de défilement
 ```
-&nbsp; 
+
+ 
 
 Résumé statistique des données selon la <i>Condition</i>
 
@@ -268,6 +352,34 @@ dt_Tests_var %>%
   scroll_box(width = "100%") # Barre de défilement
 ```
 
+Suppression des données aberrantes
+
+```{r outliers}
+datao <- data[,5:55] # Copie du dataframe
+datao <- copy_labels(datao, data) # Copie des étiquettes
+
+# Fonction de repérage des valeurs aberrantes
+find_outliers <- function(x) { 
+  Q1 <- quantile(x, probs = .25) # Premier quantile (Q1)
+  Q3 <- quantile(x, probs = .75) # Troisème quantile (Q3)
+  IQR = Q3-Q1 # Écart inter-quantile (Q3 - Q1)
+  min = Q1 - (IQR * 1.5) # Borne inférieure
+  max = Q3 + (IQR*  1.5) # Borne supérieure
+  x > max | x < min # Si une valeur n'est pas dans l'intervalle, elle est un outlier / valeur aberrante
+} 
+ 
+# Fonction de suppression des valeurs aberrantes
+remove_outliers <- function(df, cols = names(df)) { 
+  for (col in cols) { 
+    df <- df[!find_outliers(df[[col]]),] # Conserve les données pas aberrantes
+  } 
+}
+
+# Appel de la fonction sur data et stockage dans un nouveau tableau
+remove_outliers(datao, as.vector(names(datao))) 
+
+```
+
 # III -- Statistiques inférentielles
 
 ## 1. Préparation des données
@@ -276,8 +388,9 @@ Transformation des données dans les bons formats
 
 ```{r binarize}
 datag <- data # Copie du jeu de données
-datag$Condition <- ifelse(data$Condition == "A", 1, 0) # Remplacement des A par 1 et le reste (T) par 0
-datag$Sexe <- ifelse(data$Sexe == "M", 1, 0) # Remplacement des M par 1 et le reste (F) par 0
+datag <- copy_labels(data,datag) # Copie des étiquettes
+datag$Condition <- ifelse(data$Condition == "Agression", 1, 0) # Remplacement des A par 1 et le reste (T) par 0
+datag$Sexe <- ifelse(data$Sexe == "Masculin", 1, 0) # Remplacement des M par 1 et le reste (F) par 0
 datag <- datag[,-c(1,43)] # Suppression du code sujet et du R de la QPM38 (qui sont liés linéairement)
 ```
 
@@ -369,7 +482,8 @@ dt_Cor_matrix_p$p <- round(dt_Cor_matrix_p$p,4) # Arrondi des p-valeurs à 4 dé
 dt_Cor_matrix_p <- dt_Cor_matrix_p[order(dt_Cor_matrix_p$p),] # Rangement croissant des valeurs selon les p-valeurs
 ```
 
-Affichage et mise en forme du tableau
+Affichage et mise en forme du tableau  \
+<i>Les corrélations élevées entre les scores des échelles et leurs totaux sont normales et permettent de vérifier la cohérence des données. De même pour certaines valeurs au sein de la BES.</i>
 
 ```{r print-cor-matrix-p}
 dt_Cor_matrix_p %>%
@@ -558,7 +672,46 @@ Autres critères pertinents à l'étude des modèles :
 
 💡 *Ces critères là s'étudient lorsqu'on a obtenu / sélectionné le meilleur modèle possible.*
 
-## 2. <i>Agression</i> et toutes les variables
+## 2. Tous les modèles possibles pour toutes les variables
+
+```{r all-mod, results = 'hide'}
+ # Création de la liste de modèles avec +30% de R2 ajusté
+best_models = list()
+
+# Incrémentation
+i = 1
+
+# Recherche des meilleurs modèles pour chaque variable
+while (i <= length(datag)) {
+#for (i in range(rangeA)) {
+  print(variable.names(datag[i]))
+  modele_min = lm(datag[,i] ~ 1, data = datag) # Création du modèle de régression minimal
+  modele_max = lm(datag[,i] ~ ., data = datag) # Création du modèle de régression maximal
+  modele_best = step(modele_min, scope = list(lower = modele_min, upper = modele_max), data = datag, direction = "forward") # Recherche du modèle minimisant l'AIC en partant du modèle minimal (en ajoutant des variables)
+  print(summary(modele_best)) # Résumé du meilleur modèle
+  name_mod = paste("modele_best", variable.names(datag[i]), sep = "_") # Création du nom du modèle
+  assign(name_mod, modele_best) # Stockage du modèle avec le bon nom
+  adj.r = summary(modele_best)$adj.r.squared
+  if (is.na(adj.r)){ # Si le R 2ajusté est vide
+    
+  }
+  else {
+    if (adj.r >= 0.2) { # Si le R 2ajusté supérieur à 0.2
+      best_models = c(best_models, name_mod)
+    }
+  }
+  rm(modele_min, modele_max, modele_best, name_mode) # Suppression des variables pour éviter les erreurs
+  i = i + 1 # Incrémentation
+}
+```
+
+## 3. <i>Agression</i> et toutes les variables
+
+Préparer les données
+
+```{r reg-prep}
+datag <- datag[,! names(datag) %in% c("Code", "Total_BES", "Total_DDS", "Total_SM", "Vitesse_P1_P2", "Vitesse_P2_Cible")] # Retirer le code sujet et les totaux des tests
+```
 
 ### a) Régression logistique multiple
 
@@ -600,15 +753,15 @@ Nous allons utiliser la méthode descendante avec l'AIC.
 modele_log_best <- step(modele_log_max, data = datag, direction = "backward") # Recherche du modèle minimisant l'AIC en partant du modèle maximal (en ôtant des variables)
 ```
 
-Meilleur modèle (AIC = 14)
+Meilleur modèle (AIC = 22)
 
 ```{R log-best-summary}
 summary(modele_log_best)
 tbl_regression(modele_log_best, 
-               label = c(Jambes = "Nombre de mouvements de jambes à l'arrêt 1", Vitesse_P1_P2 = "Vitesse entre les 2 arrêts", Jambes2 = "Nombre de mouvements de jambes à l'arrêt 2", Self_Adaptators2 = "Nombre de self-adaptators à l'arrêt 2", Pas_P2_Cible = "Nombre de pas entre l'arrêt 2 et la cible", EAFF_BES = "Score d'empathie affective (BES)"), # Nom des lignes
+               #label = term_labels(modele_log_best), # Nom des lignes
                estimate_fun = purrr::partial(style_ratio, digits = 3), # Nombre de décimales des coefficients
                pvalue_fun = purrr::partial(style_sigfig, digits = 4)) %>% # Nombre de décimale des p-valeurs
-  modify_caption("<center><b>Modèle de régression logistique multiple le plus performant (AIC = 14) pour expliquer la <i>Condition</i>.</b></center>") %>% # Légende
+  modify_caption("<center><b>Modèle de régression logistique multiple le plus performant (AIC = 22) pour prédire la <i>Condition</i>.</b></center>") %>% # Légende
   modify_header(label = "**Variable**", p.value = "**p-valeur**") %>% # Entête
   modify_footnote(estimate = "OR = Rapports des Chances", std.error = "SE = Erreur Type", ci = "CI = Intervalle de Confiance", abbreviation = TRUE)  %>% # Abbréviations
   add_significance_stars(hide_ci = FALSE, 
@@ -655,14 +808,13 @@ Nous allons utiliser la méthode ascendante avec l'AIC.
 modele_best <- step(modele_min, scope = list(lower = modele_min, upper = modele_max), data = datag, direction = "forward")  # Recherche du modèle minimisant l'AIC en partant du modèle minimal (en ajoutant des variables)
 ```
 
-Meilleur modèle (AIC = -774.6)
+Meilleur modèle (AIC = -596.59)
 
 ```{R best-summary}
-tbl_regression(modele_best, 
-               label = c(Jambes2 = "Nombres de mouvements de jambes à l'arrêt 2", EAFF_BES = "Score d'empathie affective (BES)", Narcissisme_DDS = "Score de narcissisme (DDS)", Pas_P2_Cible = "Nombre de pas entre l'arrêt 2 et la cible", Psychopathie_DDS = "Score de psychopathie (DDS)", Self_Adaptators2 = "Nombre de self-adaptators à l'arrêt 2", Total_BES = "Score total à la BES (Échelle Empathie)"),
+tbl_regression(modele_best,
                estimate_fun = purrr::partial(style_ratio, digits = 3), # Nombre de décimales des coefficients
                pvalue_fun = purrr::partial(style_sigfig, digits = 4)) %>% # Nombre de décimale des p-valeurs) %>%
-  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = -774.6) pour expliquer la <i>Condition</i>.</b></center>") %>% # Légende
+  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = -596.59) pour prédire la <i>Condition</i>.</b></center>") %>% # Légende
   modify_header(label = "**Variable**", p.value = "**p-valeur**") %>% # Entête
   modify_footnote(std.error = "SE = Erreur Type", ci = "CI = Intervalle de Confiance", abbreviation = TRUE)  %>% # Abbréviations
   add_significance_stars(hide_ci = FALSE, 
@@ -670,7 +822,7 @@ tbl_regression(modele_best,
                          pattern = "{p.value}{stars}") # Niveau de significativité
 ```
 
-## 3. <i>Condition</i> et variables avec une corrélation supérieure à 25%
+## 4. <i>Condition</i> et variables avec une corrélation supérieure à 25%
 
 ### a) Régression logistique multiple
 
@@ -695,7 +847,7 @@ summary(modele_log_sel_min) # Résumé du modèle
 Création
 
 ```{r log-sel-max, results = 'hide'}
-modele_log_sel_max = glm(datag$Condition ~  Haut_visage + Jambes + Pieds + Pas_P2_Cible + Vitesse_P2_Cible + Total_BES + EAFF_BES + ContSc_BES, data = datag, family = binomial) # Création du modèle de régression logistique multiple maximal (toutes les variables explicatives)
+modele_log_sel_max = glm(datag$Condition ~  Haut_visage + Jambes + Pieds + Pas_P2_Cible + EAFF_BES + ContSc_BES, data = datag, family = binomial) # Création du modèle de régression logistique multiple maximal (toutes les variables explicatives)
 alias(modele_log_sel_max) # Résumé du modèle
 ```
 
@@ -717,16 +869,15 @@ Nous allons utiliser la méthode descendante avec l'AIC.
 modele_log_sel_best <- step(modele_log_sel_max, data = datag, direction = "backward") # Recherche du modèle minimisant l'AIC en partant du modèle maximal (en ôtant des variables)
 ```
 
-Meilleur modèle (AIC = 35.92)
+Meilleur modèle (AIC = 40.22)
 
 ```{R log-sel-best-summary}
 summary(modele_log_sel_best)
 tbl_regression(modele_log_sel_best, 
                exponentiate = T,
-               label = c(Haut_visage = "Nombre de mouvements du haut du visage à l'arrêt 1", Jambes = "Nombre de mouvements de jambes à l'arrêt 1", Total_BES = "Score total à la BES (Échelle Empathie)", ContSc_BES = "Score de Contagion Émotionelle (BES)", EAFF_BES = "Score d'empathie affective (BES)", Pas_P2_Cible = "Nombre de pas entre l'arrêt 2 et la cible"), # Nom des lignes
                estimate_fun = purrr::partial(style_ratio, digits = 3), # Nombre de décimales des coefficients
                pvalue_fun = purrr::partial(style_sigfig, digits = 4)) %>% # Nombre de décimale des p-valeurs
-  modify_caption("<center><b>Modèle de régression logistique multiple le plus performant (AIC = 35.92) pour expliquer la <i>Condition</i> avec les variables fortement corrélées.</b></center>") %>% # Légende
+  modify_caption("<center><b>Modèle de régression logistique multiple le plus performant (AIC = 40.22) pour prédire la <i>Condition</i> avec les variables fortement corrélées.</b></center>") %>% # Légende
   modify_header(label = "**Variable**", p.value = "**p-valeur**") %>% # Entête
   modify_footnote(estimate = "OR = Rapports des Chances", std.error = "SE = Erreur Type", ci = "CI = Intervalle de Confiance", abbreviation = TRUE)  %>% # Abbréviations
   add_significance_stars(hide_ci = FALSE, 
@@ -756,7 +907,7 @@ summary(modele_sel_min) # Résumé du modèle
 #### Modèle maximal
 
 ```{R sel-max, results = 'hide'}
-modele_sel_max = lm(datag$Condition ~  Haut_visage + Jambes + Pieds + Pas_P2_Cible + Vitesse_P2_Cible + Total_BES + EAFF_BES + ContSc_BES, data = datag,) # Création du modèle de régression linéaire multiple maximal (toutes les variables explicatives)
+modele_sel_max = lm(datag$Condition ~  Haut_visage + Jambes + Pieds + Pas_P2_Cible + EAFF_BES + ContSc_BES, data = datag) # Création du modèle de régression linéaire multiple maximal (toutes les variables explicatives)
 alias(modele_sel_max) # Résumé du modèle
 summary(modele_sel_max) # Autre résumé du modèle
 ```
@@ -778,17 +929,16 @@ Meilleur modèle (AIC = 45.75)
 ```{R sel-best-summary}
 summary(modele_sel_best)
 tbl_regression(modele_sel_best,
-               label = c(EAFF_BES = "Score d'empathie affective (BES)", Pas_P2_Cible = "Nombre de pas entre l'arrêt 2 et la cible", Haut_visage = "Nombre de mouvements du haut du visage à l'arrêt 1", Jambes = "Nombre de mouvements de jambes à l'arrêt 1"), # Nom des lignes
                estimate_fun = purrr::partial(style_ratio, digits = 3), # Nombre de décimales des coefficients
                pvalue_fun = purrr::partial(style_sigfig, digits = 4)) %>% # Nombre de décimale des p-valeurs
-  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = 45.75) pour expliquer la <i>Condition</i> avec les variables fortement corrélées.</b></center>") %>%# Légende
+  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = 45.75) pour prédire la <i>Condition</i> avec les variables fortement corrélées et expliquant 30.3% de la variance des données.</b></center>") %>%# Légende
   modify_header(label = "**Variable**", p.value = "**p-valeur**") %>% # Entête
   modify_footnote(std.error = "SE = Erreur Type", ci = "CI = Intervalle de Confiance", abbreviation = TRUE)  %>% # Abbréviations
   add_significance_stars(hide_ci = FALSE, 
                          hide_p = FALSE,
                          pattern = "{p.value}{stars}") %>% # Niveau de significativité
-  add_glance_source_note(label = list(sigma ~ "\U03C3", adj.r.squared ~ "R\xc2\xb2 ajusté", p.value ~ "p-valeur"),
-                         include = c(adj.r.squared, AIC, p.value, sigma)) # Statistiques du modèle
+  add_glance_source_note(label = list(sigma ~ "\U03C3", adj.r.squared ~ "R\xc2\xb2 ajusté",  r.squared ~ "R\xc2\xb2", p.value ~ "p-valeur"),
+                         include = c(adj.r.squared, r.squared,AIC, p.value, sigma)) # Statistiques du modèle
 ```
 
 Analyse de la Variance du modèle
@@ -797,7 +947,7 @@ Analyse de la Variance du modèle
 summary.aov(modele_sel_best) # Résumé
 ```
 
-## 4. <i>Condition</i> et les 5 scores ciblés (BES, DDS, arousal)
+## 5. <i>Condition</i> et les 5 scores ciblés (BES, DDS, arousal)
 
 ### a) Régression logistique multiple
 
@@ -849,11 +999,10 @@ Meilleur modèle (AIC = 46.06)
 ```{R log-tests-best-summary}
 summary(modele_log_tests_best)
 tbl_regression(modele_log_tests_best, 
-               label = c(EAFF_BES = "Score d'empathie affective (BES)"),
                exponentiate = T, # Nom des lignes
                estimate_fun = purrr::partial(style_ratio, digits = 3), # Nombre de décimales des coefficients
                pvalue_fun = purrr::partial(style_sigfig, digits = 4)) %>% # Nombre de décimale des p-valeurs
-  modify_caption("<center><b>Modèle de régression logistique multiple le plus performant (AIC = 46.06) pour expliquer la <i>Condition</i> avec les 5 scores ciblés.</b></center>")%>% # Légende
+  modify_caption("<center><b>Modèle de régression logistique multiple le plus performant (AIC = 46.06) pour prédire la <i>Condition</i> avec les 5 scores ciblés.</b></center>")%>% # Légende
   modify_header(label = "**Variable**", p.value = "**p-valeur**") %>% # Entête
   modify_footnote(estimate = "OR = Rapports des Chances", std.error = "SE = Erreur Type", ci = "CI = Intervalle de Confiance", abbreviation = TRUE)  %>% # Abbréviations
   add_significance_stars(hide_ci = FALSE, 
@@ -910,17 +1059,16 @@ Meilleur modèle (AIC = 50.31)
 ```{R tests-best-summary}
 summary(modele_tests_best)
 tbl_regression(modele_tests_best,
-               label = c(EAFF_BES = "Score d'empathie affective (BES)"), # Nom des lignes
                estimate_fun = purrr::partial(style_ratio, digits = 3), # Nombre de décimales des coefficients
                pvalue_fun = purrr::partial(style_sigfig, digits = 4)) %>% # Nombre de décimale des p-valeurs
-  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = 50.31) pour expliquer la <i>Condition</i> avec les 5 scores ciblés.</b></center>") %>% # Légende
+  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = 50.31) pour prédire la <i>Condition</i> avec les 5 scores ciblés et expliquant 14.4% de la variance des données.</b></center>") %>% # Légende
   modify_header(label = "**Variable**", p.value = "**p-valeur**") %>% # Entête
   modify_footnote(std.error = "SE = Erreur Type", ci = "CI = Intervalle de Confiance", abbreviation = TRUE)  %>% # Abbréviations
   add_significance_stars(hide_ci = FALSE, 
                          hide_p = FALSE,
                          pattern = "{p.value}{stars}") %>% # Niveau de significativité
-  add_glance_source_note(label = list(sigma ~ "\U03C3", adj.r.squared ~ "R\xc2\xb2 ajusté", p.value ~ "p-valeur"),
-                         include = c(adj.r.squared, AIC, p.value, sigma)) # Statistiques du modèle
+  add_glance_source_note(label = list(sigma ~ "\U03C3", adj.r.squared ~ "R\xc2\xb2 ajusté",  r.squared ~ "R\xc2\xb2", p.value ~ "p-valeur"),
+                         include = c(adj.r.squared, r.squared,AIC, p.value, sigma)) # Statistiques du modèle
 ```
 
 Analyse de la Variance du modèle
@@ -929,14 +1077,15 @@ Analyse de la Variance du modèle
 summary.aov(modele_tests_best) # Résumé
 ```
 
-## 5. Scores ciblés (BES, DDS, arousal) et indices non-verbaux
+## 6. Scores ciblés (BES, DDS, arousal) et indices non-verbaux
 
 Ces scores étant des variables qualitatives discrètes, on effectue des régressions linéaires multiples.
 
 ### a) Préparation des données
 
 ```{r data-scores}
-datas <- datag[,2:31]
+datas <- datag[,2:29]
+datas <- copy_labels(datas, datag) # Copie des étiquettes
 ```
 
 ### b) Score d'empathie affective (BES)
@@ -961,7 +1110,7 @@ summary(modele_eaff_min) # Résumé du modèle
 
 ```{R eaff-max, results = 'hide'}
 modele_eaff_max = lm(datag$EAFF_BES ~ ., data = datas) # Création du modèle de régression linéaire multiple maximal (toutes les variables explicatives)
-alias(modele_eaff_max) # Résumé du modèle
+alias(modele_eaff_max)  # Résumé du modèle
 ```
 
 Résumé
@@ -987,17 +1136,16 @@ Meilleur modèle (AIC = 176.29)
 ```{R eaff-best-summary}
 summary(modele_eaff_best)
 tbl_regression(modele_eaff_best,
-               label = c(Yeux = "Nombre de mouvements des yeux à l'arrêt 1", Pieds2 = "Nombre de mouvements des pieds à l'arrêt 2", Jambes  = "Nombre de mouvements des jambes à l'arrêt 1",  Temps_P2_Cible= "Temps entre l'arrêt 2 et la cible", Mains = "Nombre de mouvements des mains à l'arrêt 1", Bras = "Nombre de mouvements des bras à l'arrêt 1", Bras2 = "Nombre de mouvements des bras à l'arrêt 2", Yeux2 = "Nombre de mouvements des yeux à l'arrêt 2", Haut_visage =  "Nombre de mouvements du haut du visage à l'arrêt 1"), # Nom des lignes
                estimate_fun = purrr::partial(style_ratio, digits = 3), # Nombre de décimales des coefficients
                pvalue_fun = purrr::partial(style_sigfig, digits = 4)) %>% # Nombre de décimale des p-valeurs
-  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = 176.29) pour expliquer le <i>score d'empathie affective (BES)</i>.</b></center>") %>% # Légende
+  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = 176.29) pour prédire le <i>score d'empathie affective (BES)</i> et expliquant 60.5% de la variance des données.</b></center>") %>% # Légende
   modify_header(label = "**Variable**", p.value = "**p-valeur**") %>% # Entête
   modify_footnote(std.error = "SE = Erreur Type", ci = "CI = Intervalle de Confiance", abbreviation = TRUE)  %>% # Abbréviations
   add_significance_stars(hide_ci = FALSE, 
                          hide_p = FALSE,
                          pattern = "{p.value}{stars}") %>% # Niveau de significativité
-  add_glance_source_note(label = list(sigma ~ "\U03C3", adj.r.squared ~ "R\xc2\xb2 ajusté", p.value ~ "p-valeur"),
-                         include = c(adj.r.squared, AIC, p.value, sigma)) # Statistiques du modèle
+  add_glance_source_note(label = list(sigma ~ "\U03C3", adj.r.squared ~ "R\xc2\xb2 ajusté",  r.squared ~ "R\xc2\xb2", p.value ~ "p-valeur"),
+                         include = c(adj.r.squared, r.squared,AIC, p.value, sigma)) # Statistiques du modèle
 ```
 
 Analyse de la Variance du modèle
@@ -1049,22 +1197,21 @@ Nous allons utiliser la méthode ascendante avec l'AIC.
 modele_ecog_best <- step(modele_ecog_min, scope = list(lower = modele_ecog_min, upper = modele_ecog_max), data = datag, direction = "forward")  # Recherche du modèle minimisant l'AIC en partant du modèle minimal (en ajoutant des variables)
 ```
 
-Meilleur modèle (AIC = 180.21)
+Meilleur modèle (AIC = 185.54)
 
 ```{R ecog-best-summary}
 summary(modele_ecog_best)
 tbl_regression(modele_ecog_best,
-               label = c(Jambes  = "Nombre de mouvements des jambes à l'arrêt 1", Bas_visage2 =  "Nombre de mouvements du bas du visage à l'arrêt 2", Haut_visage2 =  "Nombre de mouvements du haut du visage à l'arrêt 2", Bras = "Nombre de mouvements des bras à l'arrêt 1", Tete = "Nombre de mouvements de la tête à l'arrêt 1",  Vitesse_P1_P2= "Vitesse entre l'arrêt 1 et l'arrêt 2", Pieds = "Nombre de mouvements des pieds à l'arrêt 1", Buste2 = "Nombre de mouvements du buste à l'arrêt 2", Yeux2 = "Nombre de mouvements des yeux à l'arrêt 2"), # Nom des lignes
                estimate_fun = purrr::partial(style_ratio, digits = 3), # Nombre de décimales des coefficients
                pvalue_fun = purrr::partial(style_sigfig, digits = 4)) %>% # Nombre de décimale des p-valeurs
-  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = 180.21) pour expliquer le <i>score d'empathie cognitive (BES)</i>.</b></center>") %>% # Légende
+  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = 185.54) pour prédire le <i>score d'empathie cognitive (BES)</i> et expliquant 29.66% de la variance des données.</b></center>") %>% # Légende
   modify_header(label = "**Variable**", p.value = "**p-valeur**") %>% # Entête
   modify_footnote(std.error = "SE = Erreur Type", ci = "CI = Intervalle de Confiance", abbreviation = TRUE)  %>% # Abbréviations
   add_significance_stars(hide_ci = FALSE, 
                          hide_p = FALSE,
                          pattern = "{p.value}{stars}") %>% # Niveau de significativité
-  add_glance_source_note(label = list(sigma ~ "\U03C3", adj.r.squared ~ "R\xc2\xb2 ajusté", p.value ~ "p-valeur"),
-                         include = c(adj.r.squared, AIC, p.value, sigma)) # Statistiques du modèle
+  add_glance_source_note(label = list(sigma ~ "\U03C3", adj.r.squared ~ "R\xc2\xb2 ajusté",  r.squared ~ "R\xc2\xb2", p.value ~ "p-valeur"),
+                         include = c(adj.r.squared, r.squared,AIC, p.value, sigma)) # Statistiques du modèle
 ```
 
 Analyse de la Variance du modèle
@@ -1116,22 +1263,21 @@ Nous allons utiliser la méthode ascendante avec l'AIC.
 modele_machia_best <- step(modele_machia_min, scope = list(lower = modele_machia_min, upper = modele_machia_max), data = datag, direction = "forward")  # Recherche du modèle minimisant l'AIC en partant du modèle minimal (en ajoutant des variables)
 ```
 
-Meilleur modèle (AIC = 168)
+Meilleur modèle (AIC = 197.7)
 
 ```{R machia-best-summary}
 summary(modele_machia_best)
 tbl_regression(modele_machia_best,
-               label = c(Age = "Âge", Bras2 =  "Nombre de mouvements des bras à l'arrêt 2", Self_Adaptators = "Nombre de self-adaptators à l'arrêt 1", Vitesse_P2_Cible = "Vitesse entre l'arrêt 2 et la cible", Pieds2 = "Nombre de mouvements des pieds à l'arrêt 1", Bras =  "Nombre de mouvements des bras à l'arrêt 1", Sexe = "Sexe", Haut_visage =  "Nombre de mouvements du haut du visage à l'arrêt 1", Self_Adaptators2 = "Nombre de self-adaptators à l'arrêt 2", Pas_P1_P2 = "Nombre de pas ente l'arrêt 1 et l'arrêt 2", Jambes2 =  "Nombre de mouvements des jambes à l'arrêt 2", CLignements =  "Nombre de clignements des yeux à l'arrêt 1", Temps_P2_Cible = "Temps entre l'arrêt 2 et la cible", Yeux2 = "Nombre de mouvements des yeux à l'arrêt 2", Tete2 = "Nombre de mouvements de la tête à l'arrêt 2"), # Nom des lignes
                estimate_fun = purrr::partial(style_ratio, digits = 3), # Nombre de décimales des coefficients
                pvalue_fun = purrr::partial(style_sigfig, digits = 4)) %>% # Nombre de décimale des p-valeurs
-  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = 168) pour expliquer le <i>score de machiavélisme (DDS)</i>.</b></center>") %>% # Légende
+  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = 197.7) pour prédire le <i>score de machiavélisme (DDS)</i> et expliquant 39.9% de la variance des données.</b></center.7>") %>% # Légende
   modify_header(label = "**Variable**", p.value = "**p-valeur**") %>% # Entête
   modify_footnote(std.error = "SE = Erreur Type", ci = "CI = Intervalle de Confiance", abbreviation = TRUE)  %>% # Abbréviations
   add_significance_stars(hide_ci = FALSE, 
                          hide_p = FALSE,
                          pattern = "{p.value}{stars}") %>% # Niveau de significativité
-  add_glance_source_note(label = list(sigma ~ "\U03C3", adj.r.squared ~ "R\xc2\xb2 ajusté", p.value ~ "p-valeur"),
-                         include = c(adj.r.squared, AIC, p.value, sigma)) # Statistiques du modèle
+  add_glance_source_note(label = list(sigma ~ "\U03C3", adj.r.squared ~ "R\xc2\xb2 ajusté",  r.squared ~ "R\xc2\xb2", p.value ~ "p-valeur"),
+                         include = c(adj.r.squared, r.squared,AIC, p.value, sigma)) # Statistiques du modèle
 ```
 
 Analyse de la Variance du modèle
@@ -1183,22 +1329,21 @@ Nous allons utiliser la méthode ascendante avec l'AIC.
 modele_psycho_best <- step(modele_psycho_min, scope = list(lower = modele_psycho_min, upper = modele_psycho_max), data = datag, direction = "forward")  # Recherche du modèle minimisant l'AIC en partant du modèle minimal (en ajoutant des variables)
 ```
 
-Meilleur modèle (AIC = 172.65)
+Meilleur modèle (AIC = 175.72)
 
 ```{R psycho-best-summary}
 summary(modele_psycho_best)
 tbl_regression(modele_psycho_best,
-               label = c(Mains2 =  "Nombre de mouvements des mains à l'arrêt 2", Bas_visage =  "Nombre de mouvements du bas du visage à l'arrêt 1", Tete = "Nombre de mouvements de la tête à l'arrêt 1", Haut_visage =  "Nombre de mouvements du haut du visage à l'arrêt 1", Temps_P1_P2 = "Temps entre l'arrêt 1 et l'arrêt 2", Buste2 =  "Nombre de mouvements du buste à l'arrêt 2", Age = "Âge", Sexe = "Sexe", Self_Adaptators = "Nombre de self-adaptators à l'arrêt 1", Vitesse_P1_P2 = "Vitesse entre l'arrêt 1 et l'arrêt 2", Bras =  "Nombre de mouvements des bras à l'arrêt 1", Yeux2 =  "Nombre de mouvements des yeux à l'arrêt 2", Buste =  "Nombre de mouvements du buste à l'arrêt 1", Bas_visage2 =  "Nombre de mouvements du bas du visage à l'arrêt 2"), # Nom des lignes
                estimate_fun = purrr::partial(style_ratio, digits = 3), # Nombre de décimales des coefficients
                pvalue_fun = purrr::partial(style_sigfig, digits = 4)) %>% # Nombre de décimale des p-valeurs
-  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = 172.65) pour expliquer le <i>score de psychopathie (DDS)</i>.</b></center>") %>% # Légende
+  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = 175.72) pour prédire le <i>score de psychopathie (DDS)</i> et expliquant 67.6% de la variance des données.</b></center>") %>% # Légende
   modify_header(label = "**Variable**", p.value = "**p-valeur**") %>% # Entête
   modify_footnote(std.error = "SE = Erreur Type", ci = "CI = Intervalle de Confiance", abbreviation = TRUE)  %>% # Abbréviations
   add_significance_stars(hide_ci = FALSE, 
                          hide_p = FALSE,
                          pattern = "{p.value}{stars}") %>% # Niveau de significativité
-  add_glance_source_note(label = list(sigma ~ "\U03C3", adj.r.squared ~ "R\xc2\xb2 ajusté", p.value ~ "p-valeur"),
-                         include = c(adj.r.squared, AIC, p.value, sigma)) # Statistiques du modèle
+  add_glance_source_note(label = list(sigma ~ "\U03C3", adj.r.squared ~ "R\xc2\xb2 ajusté",  r.squared ~ "R\xc2\xb2", p.value ~ "p-valeur"),
+                         include = c(adj.r.squared, r.squared,AIC, p.value, sigma)) # Statistiques du modèle
 ```
 
 Analyse de la Variance du modèle
@@ -1255,17 +1400,16 @@ Meilleur modèle (AIC = 149.9)
 ```{R arous-best-summary}
 summary(modele_arous_best)
 tbl_regression(modele_arous_best,
-               label = c(Yeux2 =  "Nombre de mouvements des yeux à l'arrêt 2", Bras =  "Nombre de mouvements des bras à l'arrêt 1", Mains =  "Nombre de mouvements des mains à l'arrêt 1", Haut_visage2 =  "Nombre de mouvements du haut du visage à l'arrêt 2", Clignements2 =  "Nombre de clignement des yeux à l'arrêt 2", Temps_P1_P2 = "Temps entre l'arrêt 1 et l'arrêt 2", Sexe = "Sexe"), # Nom des lignes
                estimate_fun = purrr::partial(style_ratio, digits = 3), # Nombre de décimales des coefficients
                pvalue_fun = purrr::partial(style_sigfig, digits = 4)) %>% # Nombre de décimale des p-valeurs
-  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = 149.9) pour expliquer le <i>niveau d'arousal (ADCL)</i>.</b></center>") %>% # Légende
+  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = 149.9) pour prédire le <i>niveau d'arousal (ADCL)</i> et expliquant 37.4% de la variance des données.</b></center>") %>% # Légende
   modify_header(label = "**Variable**", p.value = "**p-valeur**") %>% # Entête
   modify_footnote(std.error = "SE = Erreur Type", ci = "CI = Intervalle de Confiance", abbreviation = TRUE)  %>% # Abbréviations
   add_significance_stars(hide_ci = FALSE, 
                          hide_p = FALSE,
                          pattern = "{p.value}{stars}") %>% # Niveau de significativité
-  add_glance_source_note(label = list(sigma ~ "\U03C3", adj.r.squared ~ "R\xc2\xb2 ajusté", p.value ~ "p-valeur"),
-                         include = c(adj.r.squared, AIC, p.value, sigma)) # Statistiques du modèle
+  add_glance_source_note(label = list(sigma ~ "\U03C3", adj.r.squared ~ "R\xc2\xb2 ajusté",  r.squared ~ "R\xc2\xb2", p.value ~ "p-valeur"),
+                         include = c(adj.r.squared, r.squared,AIC, p.value, sigma)) # Statistiques du modèle
 ```
 
 Analyse de la Variance du modèle
@@ -1274,7 +1418,268 @@ Analyse de la Variance du modèle
 summary.aov(modele_arous_best) # Résumé
 ```
 
-# V – Graphiques
+## 7. Indices non-verbaux pertinents et scores ciblés
+
+Ces scores étant des variables qualitatives discrètes, on effectue des régressions linéaires multiples.
+
+### a) Préparation des données
+
+```{r data-ind-pert}
+datap <- data[,c('Sexe', 'Condition', 'Bas_visage', 'Haut_visage', 'Bras', 'Mains', 'Jambes', 'Haut_visage2', 'Pas_P2_Cible', 'EAFF_BES', 'Ecog_BES', 'Machiavelisme_DDS', 'Psychopathie_DDS', 'Excitation_ADCL')] # Conserver les indices pertinents et les 5 scores cibles
+datap <- copy_labels(datap, data) # Copie des étiquettes
+```
+
+### b) Mouvements du bas du visage à l'arrêt 1
+
+#### Recherche du meilleur modèle
+
+```{r ind-pert-basvis1-min-max}
+
+modele_basvis1_min = lm(datap$Bas_visage ~ 1, data = datap) # Création du modèle de régression minimal
+modele_basvis1_max = lm(datap$Bas_visage ~ datap$Sexe + datap$Condition + datap$EAFF_BES + datap$Ecog_BES + datap$Machiavelisme_DDS + datap$Psychopathie_DDS + datap$Excitation_ADCL, data = datap) # Création du modèle de régression maximal
+summary(modele_basvis1_max) # Résumé du modèle
+```
+
+#### Meilleur modèle
+
+Nous allons utiliser la méthode ascendante avec l'AIC.
+
+💡 *Retirer `results='hide'` pour afficher les détails.*
+
+```{R ind-pert-basvis1-best, results = 'hide'}
+modele_basvis1_best <- step(modele_basvis1_min, scope = list(lower = modele_basvis1_min, upper = modele_basvis1_max), data = datap, direction = "forward") # Recherche du modèle minimisant l'AIC en partant du modèle minimal (en ajoutant des variables)
+summary(modele_basvis1_best) # Résumé du modèle
+```
+
+Meilleur modèle (AIC = 116.26)
+
+```{R basvis1-summary}
+tbl_regression(modele_basvis1_best,
+               estimate_fun = purrr::partial(style_ratio, digits = 3), # Nombre de décimales des coefficients
+               pvalue_fun = purrr::partial(style_sigfig, digits = 4)) %>% # Nombre de décimale des p-valeurs
+  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = 116.26) pour prédire le <i>nombre de mouvements du bas du visage à l'arrêt 1</i> et expliquant 23% de la variance des données.</b></center>") %>% # Légende
+  modify_header(label = "**Variable**", p.value = "**p-valeur**") %>% # Entête
+  modify_footnote(std.error = "SE = Erreur Type", ci = "CI = Intervalle de Confiance", abbreviation = TRUE)  %>% # Abbréviations
+  add_significance_stars(hide_ci = FALSE, 
+                         hide_p = FALSE,
+                         pattern = "{p.value}{stars}") %>% # Niveau de significativité
+  add_glance_source_note(label = list(sigma ~ "\U03C3", adj.r.squared ~ "R\xc2\xb2 ajusté",  r.squared ~ "R\xc2\xb2", p.value ~ "p-valeur"),
+                         include = c(adj.r.squared, r.squared,AIC, p.value, sigma)) # Statistiques du modèle
+```
+
+### c) Mouvements du haut du visage à l'arrêt 1
+
+#### Recherche du meilleur modèle
+
+```{r ind-pert-hautvis1-min-max}
+
+modele_hautvis1_min = lm(datap$Haut_visage ~ 1, data = datap) # Création du modèle de régression minimal
+modele_hautvis1_max = lm(datap$Haut_visage ~ datap$Sexe + datap$Condition + datap$EAFF_BES + datap$Ecog_BES + datap$Machiavelisme_DDS + datap$Psychopathie_DDS + datap$Excitation_ADCL, data = datap) # Création du modèle de régression
+summary(modele_hautvis1_max) # Résumé du modèle
+```
+
+#### Meilleur modèle
+
+Nous allons utiliser la méthode ascendante avec l'AIC.
+
+💡 *Retirer `results='hide'` pour afficher les détails.*
+
+```{R ind-pert-hautvis1-best, results = 'hide'}
+modele_hautvis1_best <- step(modele_hautvis1_min, scope = list(lower = modele_hautvis1_min, upper = modele_hautvis1_max), data = datap, direction = "forward") # Recherche du modèle minimisant l'AIC en partant du modèle minimal (en ajoutant des variables)
+summary(modele_hautvis1_best) # Résumé du modèle
+```
+
+Meilleur modèle (AIC = 5.25)
+
+```{R hautvis1-summary}
+tbl_regression(modele_hautvis1_best,
+               estimate_fun = purrr::partial(style_ratio, digits = 3), # Nombre de décimales des coefficients
+               pvalue_fun = purrr::partial(style_sigfig, digits = 4)) %>% # Nombre de décimale des p-valeurs
+  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = 5.25) pour prédire le <i>nombre de mouvements du haut du visage à l'arrêt 1</i> et expliquant 6.8% de la variance des données.</b></center>") %>% # Légende
+  modify_header(label = "**Variable**", p.value = "**p-valeur**") %>% # Entête
+  modify_footnote(std.error = "SE = Erreur Type", ci = "CI = Intervalle de Confiance", abbreviation = TRUE)  %>% # Abbréviations
+  add_significance_stars(hide_ci = FALSE, 
+                         hide_p = FALSE,
+                         pattern = "{p.value}{stars}") %>% # Niveau de significativité
+  add_glance_source_note(label = list(sigma ~ "\U03C3", adj.r.squared ~ "R\xc2\xb2 ajusté",  r.squared ~ "R\xc2\xb2", p.value ~ "p-valeur"),
+                         include = c(adj.r.squared, r.squared,AIC, p.value, sigma)) # Statistiques du modèle
+```
+
+### d) Mouvements des bras à l'arrêt 1
+
+#### Recherche du meilleur modèle
+
+```{r ind-pert-bras1-min-max}
+
+modele_bras1_min = lm(datap$Bras ~ 1, data = datap) # Création du modèle de régression minimal
+modele_bras1_max = lm(datap$Bras ~ datap$Sexe + datap$Condition + datap$EAFF_BES + datap$Ecog_BES + datap$Machiavelisme_DDS + datap$Psychopathie_DDS + datap$Excitation_ADCL, data = datap) # Création du modèle de régression maximal
+summary(modele_bras1_max) # Résumé du modèle
+```
+
+#### Meilleur modèle
+
+Nous allons utiliser la méthode ascendante avec l'AIC.
+
+💡 *Retirer `results='hide'` pour afficher les détails.*
+
+```{R ind-pert-bras1-best, results = 'hide'}
+modele_bras1_best <- step(modele_bras1_min, scope = list(lower = modele_bras1_min, upper = modele_bras1_max), data = datap, direction = "forward") # Recherche du modèle minimisant l'AIC en partant du modèle minimal (en ajoutant des variables)
+summary(modele_bras1_best) # Résumé du modèle
+```
+
+Meilleur modèle (AIC = 55.19)
+
+```{R bras1-summary}
+tbl_regression(modele_bras1_best,
+               estimate_fun = purrr::partial(style_ratio, digits = 3), # Nombre de décimales des coefficients
+               pvalue_fun = purrr::partial(style_sigfig, digits = 4)) %>% # Nombre de décimale des p-valeurs
+  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = 55.19) pour prédire le <i>nombre de mouvements des bras à l'arrêt 1</i> et expliquant 27.78% de la variance des données.</b></center>") %>% # Légende
+  modify_header(label = "**Variable**", p.value = "**p-valeur**") %>% # Entête
+  modify_footnote(std.error = "SE = Erreur Type", ci = "CI = Intervalle de Confiance", abbreviation = TRUE)  %>% # Abbréviations
+  add_significance_stars(hide_ci = FALSE, 
+                         hide_p = FALSE,
+                         pattern = "{p.value}{stars}") %>% # Niveau de significativité
+  add_glance_source_note(label = list(sigma ~ "\U03C3", adj.r.squared ~ "R\xc2\xb2 ajusté",  r.squared ~ "R\xc2\xb2", p.value ~ "p-valeur"),
+                         include = c(adj.r.squared, r.squared,AIC, p.value, sigma)) # Statistiques du modèle
+```
+
+### e) Mouvements des mains à l'arrêt 1
+
+#### Recherche du meilleur modèle
+
+```{r ind-pert-mains1-min-max}
+
+modele_mains1_min = lm(datap$Mains ~ 1, data = datap)  # Création du modèle de régression minimal
+modele_mains1_max = lm(datap$Mains ~ datap$Sexe + datap$Condition + datap$EAFF_BES + datap$Ecog_BES + datap$Machiavelisme_DDS + datap$Psychopathie_DDS + datap$Excitation_ADCL, data = datap) # Création du modèle de régression maximal
+summary(modele_mains1_max) # Résumé du modèle
+```
+
+#### Meilleur modèle
+
+Nous allons utiliser la méthode ascendante avec l'AIC.
+
+💡 *Retirer `results='hide'` pour afficher les détails.*
+
+```{R ind-pert-mains1-best, results = 'hide'}
+modele_mains1_best <- step(modele_mains1_min, scope = list(lower = modele_mains1_min, upper = modele_mains1_max), data = datap, direction = "forward") # Recherche du modèle minimisant l'AIC en partant du modèle minimal (en ajoutant des variables)
+summary(modele_mains1_best) # Résumé du modèle
+```
+
+Meilleur modèle (AIC = 97.21)
+
+```{R mains1-summary}
+tbl_regression(modele_mains1_best,
+               estimate_fun = purrr::partial(style_ratio, digits = 3), # Nombre de décimales des coefficients
+               pvalue_fun = purrr::partial(style_sigfig, digits = 4)) %>% # Nombre de décimale des p-valeurs
+  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = 97.21) pour prédire le <i>nombre de mouvements des mains à l'arrêt 1</i> et expliquant 18.2% de la variance des données.</b></center>") %>% # Légende
+  modify_header(label = "**Variable**", p.value = "**p-valeur**") %>% # Entête
+  modify_footnote(std.error = "SE = Erreur Type", ci = "CI = Intervalle de Confiance", abbreviation = TRUE)  %>% # Abbréviations
+  add_significance_stars(hide_ci = FALSE, 
+                         hide_p = FALSE,
+                         pattern = "{p.value}{stars}") %>% # Niveau de significativité
+  add_glance_source_note(label = list(sigma ~ "\U03C3", adj.r.squared ~ "R\xc2\xb2 ajusté",  r.squared ~ "R\xc2\xb2", p.value ~ "p-valeur"),
+                         include = c(adj.r.squared, r.squared,AIC, p.value, sigma)) # Statistiques du modèle
+```
+
+### f) Mouvements des jambes à l'arrêt 1
+
+#### Recherche du meilleur modèle
+
+```{r ind-pert-jambes1-min-max}
+
+modele_jambes1_min = lm(datap$Jambes ~ 1, data = datap) # Création du modèle de régression minimal
+modele_jambes1_max = lm(datap$Jambes ~ datap$Sexe + datap$Condition + datap$EAFF_BES + datap$Ecog_BES + datap$Machiavelisme_DDS + datap$Psychopathie_DDS + datap$Excitation_ADCL, data = datap) # Création du modèle de régression maximal
+summary(modele_jambes1_max) # Résumé du modèle
+```
+
+#### Meilleur modèle
+
+Nous allons utiliser la méthode ascendante avec l'AIC.
+
+💡 *Retirer `results='hide'` pour afficher les détails.*
+
+```{R ind-pert-jambes1-best, results = 'hide'}
+modele_jambes1_best <- step(modele_jambes1_min, scope = list(lower = modele_jambes1_min, upper = modele_jambes1_max), data = datap, direction = "forward") # Recherche du modèle minimisant l'AIC en partant du modèle minimal (en ajoutant des variables)
+summary(modele_jambes1_best) # Résumé du modèle
+```
+
+Meilleur modèle (AIC = 162.79)
+
+```{R jambes1-summary}
+tbl_regression(modele_jambes1_best,
+               estimate_fun = purrr::partial(style_ratio, digits = 3), # Nombre de décimales des coefficients
+               pvalue_fun = purrr::partial(style_sigfig, digits = 4)) %>% # Nombre de décimale des p-valeurs
+  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = 162.79) pour prédire le <i>nombre de mouvements des jambes à l'arrêt 1</i> et expliquant 39.01% de la variance des données.</b></center>") %>% # Légende
+  modify_header(label = "**Variable**", p.value = "**p-valeur**") %>% # Entête
+  modify_footnote(std.error = "SE = Erreur Type", ci = "CI = Intervalle de Confiance", abbreviation = TRUE)  %>% # Abbréviations
+  add_significance_stars(hide_ci = FALSE, 
+                         hide_p = FALSE,
+                         pattern = "{p.value}{stars}") %>% # Niveau de significativité
+  add_glance_source_note(label = list(sigma ~ "\U03C3", adj.r.squared ~ "R\xc2\xb2 ajusté",  r.squared ~ "R\xc2\xb2", p.value ~ "p-valeur"),
+                         include = c(adj.r.squared, r.squared,AIC, p.value, sigma)) # Statistiques du modèle
+```
+
+### g) Mouvements du haut du visage à l'arrêt 2
+
+#### Recherche du meilleur modèle
+
+```{r ind-pert-hautvis2-min-max}
+
+modele_hautvis2_min = lm(datap$Haut_visage2 ~ 1, data = datap) # Création du modèle de régression minimal
+modele_hautvis2_max = lm(datap$Haut_visage2 ~ datap$Sexe + datap$Condition + datap$EAFF_BES + datap$Ecog_BES + datap$Machiavelisme_DDS + datap$Psychopathie_DDS + datap$Excitation_ADCL, data = datap) # Création du modèle de régression maximal
+summary(modele_hautvis2_max) # Résumé du modèle
+```
+
+#### Meilleur modèle
+
+Nous allons utiliser la méthode ascendante avec l'AIC.
+
+💡 *Retirer `results='hide'` pour afficher les détails.*
+
+```{R ind-pert-hautvis2-best, results = 'hide'}
+modele_hautvis2_best <- step(modele_hautvis2_min, scope = list(lower = modele_hautvis2_min, upper = modele_hautvis2_max), data = datap, direction = "forward")  # Recherche du modèle minimisant l'AIC en partant du modèle minimal (en ajoutant des variables)
+summary(modele_hautvis2_best) # Résumé du modèle
+```
+
+### h) Nombre de pas entre l'arrêt 2 et la cible
+
+#### Recherche du meilleur modèle
+
+```{r ind-pert-pasp2cible-min-max}
+
+modele_pasp2cible_min = lm(datap$Pas_P2_Cible ~ 1, data = datap) # Création du modèle de régression minimal
+modele_pasp2cible_max = lm(datap$Pas_P2_Cible ~ datap$Sexe + datap$Condition + datap$EAFF_BES + datap$Ecog_BES + datap$Machiavelisme_DDS + datap$Psychopathie_DDS + datap$Excitation_ADCL, data = datap) # Création du modèle de régression maximal
+summary(modele_pasp2cible_max) # Résumé du modèle
+```
+
+#### Meilleur modèle
+
+Nous allons utiliser la méthode ascendante avec l'AIC.
+
+💡 *Retirer `results='hide'` pour afficher les détails.*
+
+```{R ind-pert-pasp2cible-best, results = 'hide'}
+modele_pasp2cible_best <- step(modele_pasp2cible_min, scope = list(lower = modele_pasp2cible_min, upper = modele_pasp2cible_max), data = datap, direction = "forward")  # Recherche du modèle minimisant l'AIC en partant du modèle minimal (en ajoutant des variables)
+summary(modele_pasp2cible_best) # Résumé du modèle
+```
+
+Meilleur modèle (AIC = 96.98)
+
+```{R pasp2cible-summary}
+tbl_regression(modele_pasp2cible_best,
+               estimate_fun = purrr::partial(style_ratio, digits = 3), # Nombre de décimales des coefficients
+               pvalue_fun = purrr::partial(style_sigfig, digits = 4)) %>% # Nombre de décimale des p-valeurs
+  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = 96.98) pour prédire le <i>nombre de pas entre l'arrêt 2 et la cible</i> et expliquant 8.14% de la variance des données.</b></center>") %>% # Légende
+  modify_header(label = "**Variable**", p.value = "**p-valeur**") %>% # Entête
+  modify_footnote(std.error = "SE = Erreur Type", ci = "CI = Intervalle de Confiance", abbreviation = TRUE)  %>% # Abbréviations
+  add_significance_stars(hide_ci = FALSE, 
+                         hide_p = FALSE,
+                         pattern = "{p.value}{stars}") %>% # Niveau de significativité
+  add_glance_source_note(label = list(sigma ~ "\U03C3", adj.r.squared ~ "R\xc2\xb2 ajusté",  r.squared ~ "R\xc2\xb2", p.value ~ "p-valeur"),
+                         include = c(adj.r.squared, r.squared,AIC, p.value, sigma)) # Statistiques du modèle
+```
+
+# V -- Graphiques
 
 ## 1. <i>Condition</i> et scores cibles
 
@@ -1323,7 +1728,6 @@ ggboxplot(data, x = "Condition", y = "Excitation_ADCL", color = "Sexe",
           title = "Niveau d'arousal (ADCL) selon la condition.")
 ```
 
-
 ## 2. <i>Condition</i> et variables avec une corrélation supérieure à 40%
 
 ### a) Jambes à l'arrêt 2
@@ -1341,7 +1745,5 @@ ggboxplot(data, x = "Condition", y = "Jambes2", color = "Sexe",
 ggboxplot(data, x = "Condition", y = "ContSc_BES", color = "Sexe",
           palette = c("#870A48", "#12711C"),
           ylab = "Score de contagion émotionnelle (BES)",
-          title = "Score de contagion émotionnelle(BES) selon la condition.")
+          title = "Score de contagion émotionnelle (BES) selon la condition.")
 ```
-
-
