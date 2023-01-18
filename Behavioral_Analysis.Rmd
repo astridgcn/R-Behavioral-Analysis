@@ -1,6 +1,6 @@
 ---
 title: "Analyse des données comportementales"
-subtitle: "Statistiques descriptives, inférentielles & régressions"
+subtitle: "Détection de l'agression – CCTV"
 author: "<i>Astrid Thébault Guiochon</i>"
 output: 
   html_document:
@@ -40,15 +40,19 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 💡 *Ajouter `{CRAN}` après les \`\`\`*
 
     tinytex::install_tinytex()
+    install.packages("car")
     install.packages("corrplot")
     install.packages("dplyr")
     install.packages("expss")
+    install.packages("flextable")
     install.packages("ggpubr")
     install.packages("gtsummary")  
     install.packages("Hmisc")
     install.packages("kableExtra")
     install.packages("knitr")
     install.packages("labelled")
+    install.packages("lme4")
+    install.packages("lmerTest")
     install.packages("magrittr")
     install.packages("psych")
     install.packages("purrr")
@@ -63,15 +67,19 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 On déclare les librairies qu'on utilise et permettent d'appeler des fonctions particulières.
 
 ```{r libraries}
+library(car)
 library(corrplot)
 library(dplyr)
 library(expss)
+library(flextable)
 library(ggpubr)
 library(gtsummary)  
 library(Hmisc)
 library(kableExtra)
 library(knitr)
 library(labelled)
+library(lme4)
+library(lmerTest)
 library(magrittr)
 library(psych)
 library(purrr)
@@ -162,12 +170,12 @@ var_label(data) <- list(Sexe = "Sexe",
                          
                          Machiavelisme_DDS = "Score de machiavélisme (DDS)",
                          Psychopathie_DDS = "Score de psychopathie (DDS)",
-                         Narcissisme_DDS = "Score de machiavélisme (DDS)",
+                         Narcissisme_DDS = "Score de narcissisme (DDS)",
                          Total_DDS = "Score total à la DDS (Triade Sombre)",
                          
                          R_QI = "Score de réponses à la QPM38 (Matrices de Raven)",
                          QPM38_QI = "Score à la QPM38 (Matrices de Raven)",
-                         Centile_QI = "Score à la QPM38 (Matrices de Raven)",
+                         Centile_QI = "Centile à la QPM38 (Matrices de Raven)",
                          
                          Activation_Generale_Trait_ADCL = "Score d'activation générale trait (ADCL)",
                          Serenite_Trait_ADCL = "Niveau de sérénité trait (ADCL)",
@@ -355,7 +363,7 @@ dt_Tests_var %>%
 Suppression des données aberrantes
 
 ```{r outliers}
-datao <- data[,5:55] # Copie du dataframe
+datao <- data[,5:53] # Copie du dataframe
 datao <- copy_labels(datao, data) # Copie des étiquettes
 
 # Fonction de repérage des valeurs aberrantes
@@ -1352,7 +1360,73 @@ Analyse de la Variance du modèle
 summary.aov(modele_psycho_best) # Résumé
 ```
 
-### f) Niveau d'arousal (ADCL)
+### f) Score de narcissisme (DDS)
+
+#### Modèle minimal
+
+Création
+
+```{R narci-min, results = 'hide'}
+modele_narci_min = lm(datag$Narcissisme_DDS ~ 1, data = datas) # Création du modèle de régression linéaire multiple minimal (aucune variable explicative)
+```
+
+Résumé
+
+```{r narci-min-summary}
+summary(modele_narci_min) # Résumé du modèle
+```
+
+ 
+
+#### Modèle maximal
+
+```{R narci-max, results = 'hide'}
+modele_narci_max = lm(datag$Narcissisme_DDS ~ ., data = datas)  # Création du modèle de régression linéaire multiple maximal (toutes les variables explicatives)
+alias(modele_narci_max) # Résumé du modèle
+```
+
+Résumé
+
+```{r narci-max-summary}
+summary(modele_narci_max) # Résumé du modèle
+```
+
+ 
+
+#### Meilleur modèle
+
+Nous allons utiliser la méthode ascendante avec l'AIC.
+
+💡 *Retirer `results='hide'` pour afficher les détails.*
+
+```{R narci-best, results = 'hide'}
+modele_narci_best <- step(modele_narci_min, scope = list(lower = modele_narci_min, upper = modele_narci_max), data = datag, direction = "forward") # Recherche du modèle minimisant l'AIC en partant du modèle minimal (en ajoutant des variables)
+```
+
+Meilleur modèle (AIC = 192.07)
+
+```{R narci-best-summary}
+summary(modele_narci_best)
+tbl_regression(modele_narci_best,
+               estimate_fun = purrr::partial(style_ratio, digits = 3), # Nombre de décimales des coefficients
+               pvalue_fun = purrr::partial(style_sigfig, digits = 4)) %>% # Nombre de décimale des p-valeurs
+  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = 192.07) pour prédire le <i>narcissisme (DDS)</i> et expliquant 67.47% de la variance des données.</b></center>") %>% # Légende
+  modify_header(label = "**Variable**", p.value = "**p-valeur**") %>% # Entête
+  modify_footnote(std.error = "SE = Erreur Type", ci = "CI = Intervalle de Confiance", abbreviation = TRUE)  %>% # Abbréviations
+  add_significance_stars(hide_ci = FALSE, 
+                         hide_p = FALSE,
+                         pattern = "{p.value}{stars}") %>% # Niveau de significativité
+  add_glance_source_note(label = list(sigma ~ "\U03C3", adj.r.squared ~ "R\xc2\xb2 ajusté",  r.squared ~ "R\xc2\xb2", p.value ~ "p-valeur"),
+                         include = c(adj.r.squared, r.squared,AIC, p.value, sigma)) # Statistiques du modèle
+```
+
+Analyse de la Variance du modèle
+
+```{r aov-narci}
+summary.aov(modele_narci_best) # Résumé
+```
+
+### g) Niveau d'arousal (ADCL)
 
 #### Modèle minimal
 
@@ -1425,7 +1499,8 @@ Ces scores étant des variables qualitatives discrètes, on effectue des régres
 ### a) Préparation des données
 
 ```{r data-ind-pert}
-datap <- data[,c('Sexe', 'Condition', 'Bas_visage', 'Haut_visage', 'Bras', 'Mains', 'Jambes', 'Haut_visage2', 'Pas_P2_Cible', 'EAFF_BES', 'Ecog_BES', 'Machiavelisme_DDS', 'Psychopathie_DDS', 'Excitation_ADCL')] # Conserver les indices pertinents et les 5 scores cibles
+#datap <- data[,c('Sexe', 'Condition', 'Bas_visage', 'Haut_visage', 'Bras', 'Mains', 'Jambes', 'Haut_visage2', 'Pas_P2_Cible', 'EAFF_BES', 'Ecog_BES', 'Machiavelisme_DDS', 'Psychopathie_DDS', 'Narcissisme_DDS', 'Excitation_ADCL')] # Conserver les indices pertinents et les 5 scores cibles
+datap <- data[,c('Sexe', 'Condition', 'Bas_visage', 'Haut_visage', 'Yeux', 'Bras', 'Mains', 'Jambes', 'Temps_P1_P2', 'Haut_visage2', 'Buste2', 'Pas_P2_Cible', 'EAFF_BES', 'Ecog_BES', 'Machiavelisme_DDS', 'Psychopathie_DDS', 'Narcissisme_DDS', 'Excitation_ADCL')] # Conserver les indices pertinents et les 5 scores cibles
 datap <- copy_labels(datap, data) # Copie des étiquettes
 ```
 
@@ -1434,9 +1509,8 @@ datap <- copy_labels(datap, data) # Copie des étiquettes
 #### Recherche du meilleur modèle
 
 ```{r ind-pert-basvis1-min-max}
-
 modele_basvis1_min = lm(datap$Bas_visage ~ 1, data = datap) # Création du modèle de régression minimal
-modele_basvis1_max = lm(datap$Bas_visage ~ datap$Sexe + datap$Condition + datap$EAFF_BES + datap$Ecog_BES + datap$Machiavelisme_DDS + datap$Psychopathie_DDS + datap$Excitation_ADCL, data = datap) # Création du modèle de régression maximal
+modele_basvis1_max = lm(datap$Bas_visage ~ datap$Sexe + datap$Condition + datap$EAFF_BES + datap$Ecog_BES + datap$Machiavelisme_DDS + datap$Psychopathie_DDS + datap$Excitation_ADCL + datap$Narcissisme_DDS, data = datap) # Création du modèle de régression maximal
 summary(modele_basvis1_max) # Résumé du modèle
 ```
 
@@ -1451,13 +1525,13 @@ modele_basvis1_best <- step(modele_basvis1_min, scope = list(lower = modele_basv
 summary(modele_basvis1_best) # Résumé du modèle
 ```
 
-Meilleur modèle (AIC = 116.26)
+Meilleur modèle (AIC = 114.55)
 
 ```{R basvis1-summary}
 tbl_regression(modele_basvis1_best,
                estimate_fun = purrr::partial(style_ratio, digits = 3), # Nombre de décimales des coefficients
                pvalue_fun = purrr::partial(style_sigfig, digits = 4)) %>% # Nombre de décimale des p-valeurs
-  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = 116.26) pour prédire le <i>nombre de mouvements du bas du visage à l'arrêt 1</i> et expliquant 23% de la variance des données.</b></center>") %>% # Légende
+  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = 114.55) pour prédire le <i>nombre de mouvements du bas du visage à l'arrêt 1</i> et expliquant 28.29% de la variance des données.</b></center>") %>% # Légende
   modify_header(label = "**Variable**", p.value = "**p-valeur**") %>% # Entête
   modify_footnote(std.error = "SE = Erreur Type", ci = "CI = Intervalle de Confiance", abbreviation = TRUE)  %>% # Abbréviations
   add_significance_stars(hide_ci = FALSE, 
@@ -1472,9 +1546,8 @@ tbl_regression(modele_basvis1_best,
 #### Recherche du meilleur modèle
 
 ```{r ind-pert-hautvis1-min-max}
-
 modele_hautvis1_min = lm(datap$Haut_visage ~ 1, data = datap) # Création du modèle de régression minimal
-modele_hautvis1_max = lm(datap$Haut_visage ~ datap$Sexe + datap$Condition + datap$EAFF_BES + datap$Ecog_BES + datap$Machiavelisme_DDS + datap$Psychopathie_DDS + datap$Excitation_ADCL, data = datap) # Création du modèle de régression
+modele_hautvis1_max = lm(datap$Haut_visage ~ datap$Sexe + datap$Condition + datap$EAFF_BES + datap$Ecog_BES + datap$Machiavelisme_DDS + datap$Psychopathie_DDS + datap$Narcissisme_DDS + datap$Excitation_ADCL, data = datap) # Création du modèle de régression
 summary(modele_hautvis1_max) # Résumé du modèle
 ```
 
@@ -1505,14 +1578,50 @@ tbl_regression(modele_hautvis1_best,
                          include = c(adj.r.squared, r.squared,AIC, p.value, sigma)) # Statistiques du modèle
 ```
 
-### d) Mouvements des bras à l'arrêt 1
+### d) Mouvements des yeux à l'arrêt 1
+
+#### Recherche du meilleur modèle
+
+```{r ind-pert-yeux1-min-max}
+modele_yeux1_min = lm(datap$Yeux ~ 1, data = datap) # Création du modèle de régression minimal
+modele_yeux1_max = lm(datap$Yeux ~ datap$Sexe + datap$Condition + datap$EAFF_BES + datap$Ecog_BES + datap$Machiavelisme_DDS + datap$Psychopathie_DDS + datap$Excitation_ADCL + datap$Narcissisme_DDS, data = datap) # Création du modèle de régression maximal
+summary(modele_yeux1_max) # Résumé du modèle
+```
+
+#### Meilleur modèle
+
+Nous allons utiliser la méthode ascendante avec l'AIC.
+
+💡 *Retirer `results='hide'` pour afficher les détails.*
+
+```{R ind-pert-yeux1-best, results = 'hide'}
+modele_yeux1_best <- step(modele_yeux1_min, scope = list(lower = modele_yeux1_min, upper = modele_yeux1_max), data = datap, direction = "forward") # Recherche du modèle minimisant l'AIC en partant du modèle minimal (en ajoutant des variables)
+summary(modele_yeux1_best) # Résumé du modèle
+```
+
+Meilleur modèle (AIC = 139.38)
+
+```{R yeux1-summary}
+tbl_regression(modele_yeux1_best,
+               estimate_fun = purrr::partial(style_ratio, digits = 3), # Nombre de décimales des coefficients
+               pvalue_fun = purrr::partial(style_sigfig, digits = 4)) %>% # Nombre de décimale des p-valeurs
+  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = 139.38) pour prédire le <i>nombre de mouvements des yeux à l'arrêt 1</i> et expliquant 38.07% de la variance des données.</b></center>") %>% # Légende
+  modify_header(label = "**Variable**", p.value = "**p-valeur**") %>% # Entête
+  modify_footnote(std.error = "SE = Erreur Type", ci = "CI = Intervalle de Confiance", abbreviation = TRUE)  %>% # Abbréviations
+  add_significance_stars(hide_ci = FALSE, 
+                         hide_p = FALSE,
+                         pattern = "{p.value}{stars}") %>% # Niveau de significativité
+  add_glance_source_note(label = list(sigma ~ "\U03C3", adj.r.squared ~ "R\xc2\xb2 ajusté",  r.squared ~ "R\xc2\xb2", p.value ~ "p-valeur"),
+                         include = c(adj.r.squared, r.squared,AIC, p.value, sigma)) # Statistiques du modèle
+```
+
+### e) Mouvements des bras à l'arrêt 1
 
 #### Recherche du meilleur modèle
 
 ```{r ind-pert-bras1-min-max}
-
 modele_bras1_min = lm(datap$Bras ~ 1, data = datap) # Création du modèle de régression minimal
-modele_bras1_max = lm(datap$Bras ~ datap$Sexe + datap$Condition + datap$EAFF_BES + datap$Ecog_BES + datap$Machiavelisme_DDS + datap$Psychopathie_DDS + datap$Excitation_ADCL, data = datap) # Création du modèle de régression maximal
+modele_bras1_max = lm(datap$Bras ~ datap$Sexe + datap$Condition + datap$EAFF_BES + datap$Ecog_BES + datap$Machiavelisme_DDS + datap$Psychopathie_DDS + datap$Narcissisme_DDS + datap$Excitation_ADCL, data = datap) # Création du modèle de régression maximal
 summary(modele_bras1_max) # Résumé du modèle
 ```
 
@@ -1543,14 +1652,13 @@ tbl_regression(modele_bras1_best,
                          include = c(adj.r.squared, r.squared,AIC, p.value, sigma)) # Statistiques du modèle
 ```
 
-### e) Mouvements des mains à l'arrêt 1
+### f) Mouvements des mains à l'arrêt 1
 
 #### Recherche du meilleur modèle
 
 ```{r ind-pert-mains1-min-max}
-
 modele_mains1_min = lm(datap$Mains ~ 1, data = datap)  # Création du modèle de régression minimal
-modele_mains1_max = lm(datap$Mains ~ datap$Sexe + datap$Condition + datap$EAFF_BES + datap$Ecog_BES + datap$Machiavelisme_DDS + datap$Psychopathie_DDS + datap$Excitation_ADCL, data = datap) # Création du modèle de régression maximal
+modele_mains1_max = lm(datap$Mains ~ datap$Sexe + datap$Condition + datap$EAFF_BES + datap$Ecog_BES + datap$Machiavelisme_DDS + datap$Psychopathie_DDS + datap$Narcissisme_DDS + datap$Excitation_ADCL, data = datap) # Création du modèle de régression maximal
 summary(modele_mains1_max) # Résumé du modèle
 ```
 
@@ -1565,13 +1673,13 @@ modele_mains1_best <- step(modele_mains1_min, scope = list(lower = modele_mains1
 summary(modele_mains1_best) # Résumé du modèle
 ```
 
-Meilleur modèle (AIC = 97.21)
+Meilleur modèle (AIC = 97.97)
 
 ```{R mains1-summary}
 tbl_regression(modele_mains1_best,
                estimate_fun = purrr::partial(style_ratio, digits = 3), # Nombre de décimales des coefficients
                pvalue_fun = purrr::partial(style_sigfig, digits = 4)) %>% # Nombre de décimale des p-valeurs
-  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = 97.21) pour prédire le <i>nombre de mouvements des mains à l'arrêt 1</i> et expliquant 18.2% de la variance des données.</b></center>") %>% # Légende
+  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = 97.97) pour prédire le <i>nombre de mouvements des mains à l'arrêt 1</i> et expliquant 14.3% de la variance des données.</b></center>") %>% # Légende
   modify_header(label = "**Variable**", p.value = "**p-valeur**") %>% # Entête
   modify_footnote(std.error = "SE = Erreur Type", ci = "CI = Intervalle de Confiance", abbreviation = TRUE)  %>% # Abbréviations
   add_significance_stars(hide_ci = FALSE, 
@@ -1581,14 +1689,13 @@ tbl_regression(modele_mains1_best,
                          include = c(adj.r.squared, r.squared,AIC, p.value, sigma)) # Statistiques du modèle
 ```
 
-### f) Mouvements des jambes à l'arrêt 1
+### g) Mouvements des jambes à l'arrêt 1
 
 #### Recherche du meilleur modèle
 
 ```{r ind-pert-jambes1-min-max}
-
 modele_jambes1_min = lm(datap$Jambes ~ 1, data = datap) # Création du modèle de régression minimal
-modele_jambes1_max = lm(datap$Jambes ~ datap$Sexe + datap$Condition + datap$EAFF_BES + datap$Ecog_BES + datap$Machiavelisme_DDS + datap$Psychopathie_DDS + datap$Excitation_ADCL, data = datap) # Création du modèle de régression maximal
+modele_jambes1_max = lm(datap$Jambes ~ datap$Sexe + datap$Condition + datap$EAFF_BES + datap$Ecog_BES + datap$Machiavelisme_DDS + datap$Psychopathie_DDS + datap$Narcissisme_DDS + datap$Excitation_ADCL, data = datap) # Création du modèle de régression maximal
 summary(modele_jambes1_max) # Résumé du modèle
 ```
 
@@ -1619,14 +1726,50 @@ tbl_regression(modele_jambes1_best,
                          include = c(adj.r.squared, r.squared,AIC, p.value, sigma)) # Statistiques du modèle
 ```
 
-### g) Mouvements du haut du visage à l'arrêt 2
+### h) Temps entre l'arrêt 1 et l'arrêt 2
+
+#### Recherche du meilleur modèle
+
+```{r ind-pert-tempsp1p2-min-max}
+modele_tempsp1p2_min = lm(datap$Temps_P1_P2 ~ 1, data = datap) # Création du modèle de régression minimal
+modele_tempsp1p2_max = lm(datap$Temps_P1_P2 ~ datap$Sexe + datap$Condition + datap$EAFF_BES + datap$Ecog_BES + datap$Machiavelisme_DDS + datap$Psychopathie_DDS + datap$Narcissisme_DDS + datap$Excitation_ADCL, data = datap) # Création du modèle de régression maximal
+summary(modele_tempsp1p2_max) # Résumé du modèle
+```
+
+#### Meilleur modèle
+
+Nous allons utiliser la méthode ascendante avec l'AIC.
+
+💡 *Retirer `results='hide'` pour afficher les détails.*
+
+```{R ind-pert-tempsp1p2-best, results = 'hide'}
+modele_tempsp1p2_best <- step(modele_tempsp1p2_min, scope = list(lower = modele_tempsp1p2_min, upper = modele_tempsp1p2_max), data = datap, direction = "forward") # Recherche du modèle minimisant l'AIC en partant du modèle minimal (en ajoutant des variables)
+summary(modele_tempsp1p2_best) # Résumé du modèle
+```
+
+Meilleur modèle (AIC = 69.7)
+
+```{R tempsp1p2-summary}
+tbl_regression(modele_tempsp1p2_best,
+               estimate_fun = purrr::partial(style_ratio, digits = 3), # Nombre de décimales des coefficients
+               pvalue_fun = purrr::partial(style_sigfig, digits = 4)) %>% # Nombre de décimale des p-valeurs
+  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = 69.7) pour prédire le <i>temps entre l'arrêt 1 et l'arrêt 2</i> et expliquant 18.69% de la variance des données.</b></center>") %>% # Légende
+  modify_header(label = "**Variable**", p.value = "**p-valeur**") %>% # Entête
+  modify_footnote(std.error = "SE = Erreur Type", ci = "CI = Intervalle de Confiance", abbreviation = TRUE)  %>% # Abbréviations
+  add_significance_stars(hide_ci = FALSE, 
+                         hide_p = FALSE,
+                         pattern = "{p.value}{stars}") %>% # Niveau de significativité
+  add_glance_source_note(label = list(sigma ~ "\U03C3", adj.r.squared ~ "R\xc2\xb2 ajusté",  r.squared ~ "R\xc2\xb2", p.value ~ "p-valeur"),
+                         include = c(adj.r.squared, r.squared,AIC, p.value, sigma)) # Statistiques du modèle
+```
+
+### i) Mouvements du haut du visage à l'arrêt 2
 
 #### Recherche du meilleur modèle
 
 ```{r ind-pert-hautvis2-min-max}
-
 modele_hautvis2_min = lm(datap$Haut_visage2 ~ 1, data = datap) # Création du modèle de régression minimal
-modele_hautvis2_max = lm(datap$Haut_visage2 ~ datap$Sexe + datap$Condition + datap$EAFF_BES + datap$Ecog_BES + datap$Machiavelisme_DDS + datap$Psychopathie_DDS + datap$Excitation_ADCL, data = datap) # Création du modèle de régression maximal
+modele_hautvis2_max = lm(datap$Haut_visage2 ~ datap$Sexe + datap$Condition + datap$EAFF_BES + datap$Ecog_BES + datap$Machiavelisme_DDS + datap$Psychopathie_DDS + datap$Narcissisme_DDS + datap$Excitation_ADCL, data = datap) # Création du modèle de régression maximal
 summary(modele_hautvis2_max) # Résumé du modèle
 ```
 
@@ -1641,14 +1784,50 @@ modele_hautvis2_best <- step(modele_hautvis2_min, scope = list(lower = modele_ha
 summary(modele_hautvis2_best) # Résumé du modèle
 ```
 
-### h) Nombre de pas entre l'arrêt 2 et la cible
+### j) Mouvements du buste à l'arrêt 2
+
+#### Recherche du meilleur modèle
+
+```{r ind-pert-buste2-min-max}
+modele_buste2_min = lm(datap$Buste2 ~ 1, data = datap) # Création du modèle de régression minimal
+modele_buste2_max = lm(datap$Buste2 ~ datap$Sexe + datap$Condition + datap$EAFF_BES + datap$Ecog_BES + datap$Machiavelisme_DDS + datap$Psychopathie_DDS + datap$Narcissisme_DDS + datap$Excitation_ADCL, data = datap) # Création du modèle de régression maximal
+summary(modele_buste2_max) # Résumé du modèle
+```
+
+#### Meilleur modèle
+
+Nous allons utiliser la méthode ascendante avec l'AIC.
+
+💡 *Retirer `results='hide'` pour afficher les détails.*
+
+```{R ind-pert-buste2-best, results = 'hide'}
+modele_buste2_best <- step(modele_buste2_min, scope = list(lower = modele_buste2_min, upper = modele_buste2_max), data = datap, direction = "forward")  # Recherche du modèle minimisant l'AIC en partant du modèle minimal (en ajoutant des variables)
+summary(modele_buste2_best) # Résumé du modèle
+```
+
+Meilleur modèle (AIC = 166.56)
+
+```{R buste2-summary}
+tbl_regression(modele_buste2_best,
+               estimate_fun = purrr::partial(style_ratio, digits = 3), # Nombre de décimales des coefficients
+               pvalue_fun = purrr::partial(style_sigfig, digits = 4)) %>% # Nombre de décimale des p-valeurs
+  modify_caption("<center><b>Modèle de régression linéaire multiple le plus performant (AIC = 166.56) pour prédire le <i>mouvements du buste à l'arrêt 2</i> et expliquant 21.09% de la variance des données.</b></center>") %>% # Légende
+  modify_header(label = "**Variable**", p.value = "**p-valeur**") %>% # Entête
+  modify_footnote(std.error = "SE = Erreur Type", ci = "CI = Intervalle de Confiance", abbreviation = TRUE)  %>% # Abbréviations
+  add_significance_stars(hide_ci = FALSE, 
+                         hide_p = FALSE,
+                         pattern = "{p.value}{stars}") %>% # Niveau de significativité
+  add_glance_source_note(label = list(sigma ~ "\U03C3", adj.r.squared ~ "R\xc2\xb2 ajusté",  r.squared ~ "R\xc2\xb2", p.value ~ "p-valeur"),
+                         include = c(adj.r.squared, r.squared,AIC, p.value, sigma)) # Statistiques du modèle
+```
+
+### k) Nombre de pas entre l'arrêt 2 et la cible
 
 #### Recherche du meilleur modèle
 
 ```{r ind-pert-pasp2cible-min-max}
-
 modele_pasp2cible_min = lm(datap$Pas_P2_Cible ~ 1, data = datap) # Création du modèle de régression minimal
-modele_pasp2cible_max = lm(datap$Pas_P2_Cible ~ datap$Sexe + datap$Condition + datap$EAFF_BES + datap$Ecog_BES + datap$Machiavelisme_DDS + datap$Psychopathie_DDS + datap$Excitation_ADCL, data = datap) # Création du modèle de régression maximal
+modele_pasp2cible_max = lm(datap$Pas_P2_Cible ~ datap$Sexe + datap$Condition + datap$EAFF_BES + datap$Ecog_BES + datap$Machiavelisme_DDS + datap$Psychopathie_DDS + datap$Narcissisme_DDS + datap$Excitation_ADCL, data = datap) # Création du modèle de régression maximal
 summary(modele_pasp2cible_max) # Résumé du modèle
 ```
 
@@ -1677,6 +1856,83 @@ tbl_regression(modele_pasp2cible_best,
                          pattern = "{p.value}{stars}") %>% # Niveau de significativité
   add_glance_source_note(label = list(sigma ~ "\U03C3", adj.r.squared ~ "R\xc2\xb2 ajusté",  r.squared ~ "R\xc2\xb2", p.value ~ "p-valeur"),
                          include = c(adj.r.squared, r.squared,AIC, p.value, sigma)) # Statistiques du modèle
+```
+
+## 8. Régressions mixtes
+
+#### Précisions
+
+En plus des effets fixes étudiés dans les modèles de régression linéaire, les régressions mixtes prennent en considération les effets aléatoires, afin d'observer les corrélations entre les variables.
+
+Ce type de régression produit :
+
+-   Les p-valeurs des effets fixes.
+
+-   La valeur W du test de Shapiro-Wilk (test de Normalité) et la p-valeur associée (on rejette la normalité quand la p-valeur \> .05, donc non significative).
+
+#### Préparation des données
+
+```{r lmer-prep}
+datam <- datag[,-c(32:34,40:46,48:55)] # Variables pertinentes (mémoire)
+datam <- cbind.data.frame(data$Code, datam) # Ajout du code sujet
+names(datam)[names(datam) == 'data$Code'] <- 'Code' # Renommer la colonne du code sujet
+datam$Code <-  factor(datam$Code) # Factorisation 
+datam$Condition <- factor(datam$Condition, labels = c("Agression", "Téléphone") ) # Factorisation
+datam$Sexe <- factor(datam$Sexe, # Factorisation
+                    labels = c("Féminin", "Masculin"))
+datam <- datam %>% relocate(Code, .after = Excitation_ADCL) # Déplacement à la fin du tableau
+datam <- datam %>% relocate(Condition, .after = Excitation_ADCL) # Déplacement à la fin du tableau
+datam <- datam %>% relocate(Sexe, .after = Excitation_ADCL) # Déplacement à la fin du tableau
+datam <- datam %>% relocate(Age, .after = Excitation_ADCL) # Déplacement à la fin du tableau
+```
+
+#### Tous les modèles
+
+```{r lmer-boucle-mod}
+lmer_all_mod <- list() # Création d'une liste pour stocker les modèles
+for (i in 1:34) # On tourne sur les 34 premières colonnes (toutes les variables étudiées)
+{
+  var <- (datam)[,i] # Variable intermédiaire
+  lmer_all_mod$names[[i]] <- colnames(datam)[i] # Nom des colonnes
+  mod_REML <- lmer(var ~ Sexe * Age + (1|Condition), data = datam) # Modèles
+  lmer_all_mod$shap[[i]] = shapiro.test(summary(update(mod_REML, REML = FALSE))$residuals) # Résidus du test de Shapiro
+  lmer_all_mod$pval[[i]] = Anova(update(mod_REML, REML = FALSE), type = "III")  # P-valeurs de l'Anova
+} 
+```
+
+#### Résultats
+
+Stockage
+
+```{r lmer-boucle-res-mod}
+lmer_results <- function(lmer_all_mod){ # Fonction d'affichage
+    list_model <- attributes(lmer_all_mod$pval[[1]])$row.names # Nom des colonnes
+    tmp <- matrix(0, ncol = length(list_model) + 2, nrow = length(lmer_all_mod$names) ,dimnames = list(lmer_all_mod$names, c(paste(list_model[(seq(list_model))], "(p-val)"),"W", "p-val (W)"))) # Valeurs à afficher
+    for(i in seq(length(lmer_all_mod$pval))){
+        for (j in seq(length(list_model))){
+            tmp[i,j] <- lmer_all_mod$pval[[i]][[3]][j] # P-valeurs des effets fixes
+        }
+         tmp[i,j+1] <- lmer_all_mod$shap[[i]]$statistic # Statistique de test de Shapiro
+         tmp[i,j+2] <- lmer_all_mod$shap[[i]]$p.value # P-valeurs du test de Shapiro
+    }
+    return(tmp)
+    assign(paste0(lmer_all_mod,"lmer_results"),as.data.frame(tmp), envir = parent.frame()) # Tableau
+}
+```
+
+Affichage
+
+```{r lmer-boucle-print-mod}
+#labels_dt = data.frame(var_label(datam[1:32], unlist = TRUE))
+#labels_list = list(labels_dt[c(1:30),2])
+lmer_pval <- data.frame(round(lmer_results(lmer_all_mod),5)) # Appliquer la fonction à nos modèles et arrondir les valeurs
+lmer_pval %>%
+  kbl(caption = "<b>Régressions mixtes.</b>", # Légende
+      col.names = c("p-valeur Constante", "p-valeur Sexe", "p-valeur Age", "p-valeur Sexe * Age", "W", "p-valeur W")) %>% # Nom des colonnes
+      #row.names = c("Nombre de mouvements du haut du visage à l'arrêt 1", "Nombre de mouvements du bas du visage à l'arrêt 1", "Nombre de clignements des yeux à l'arrêt 1","Nombre de mouvements des yeux à l'arrêt 1", "Nombre de mouvements de la tête à l'arrêt 1", "Nombre de mouvements du buste à l'arrêt 1","Nombre de mouvements des bras à l'arrêt 1", "Nombre de mouvements des mains à l'arrêt 1", "Nombre de mouvements des jambes à l'arrêt 1","Nombre de mouvements des pieds à l'arrêt 1", "Nombre de self-adaptators à l'arrêt 1","Nombre de pas entre l'arrêt 1 et l'arrêt 2","Temps entre l'arrêt 1 et l'arrêt 2","Nombre de mouvements du haut du visage à l'arrêt 2","Nombre de mouvements du bas du visage à l'arrêt 2","Nombre de clignements des yeux à l'arrêt 2","Nombre de mouvements des yeux à l'arrêt 2","Nombre de mouvements de la tête à l'arrêt 2","Nombre de mouvements du buste à l'arrêt 2","Nombre de mouvements des bras à l'arrêt 2","Nombre de mouvements des mains à l'arrêt 2", "Nombre de mouvements des jambes à l'arrêt 2","Nombre de mouvements des pieds à l'arrêt 2", "Nombre de self-adaptators à l'arrêt 2", "Nombre de pas entre l'arrêt 2 et la cible","Temps entre l'arrêt 2 et la cible","Score d'empathie affective (BES)","Score d'empathie cognitive (BES)","Score de machiavélisme (DDS)","Score de psychopathie (DDS)", "Score de narcissisme (DDS)", "Score à la QPM38 (Matrices de Raven)","Centile à la QPM38 (Matrices de Raven)", "Niveau d'arousal (ADCL)")) %>% # Nom des colonnes
+  kable_material(full_width = F) %>% # Taille et style
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>% # Options de surlignage et rayures
+  scroll_box(width = "100%", height = "300px") # Barres de défilement
 ```
 
 # V -- Graphiques
@@ -1719,7 +1975,16 @@ ggboxplot(data, x = "Condition", y = "Psychopathie_DDS", color = "Sexe",
           title = "Score de psychopathie (DDS) selon la condition.")
 ```
 
-### e) Niveau d'arousal (ADCL)
+### e) Score de narcissisme (DDS)
+
+```{r graph-cond-narci}
+ggboxplot(data, x = "Condition", y = "Narcissisme_DDS", color = "Sexe",
+          palette = c("#870A48", "#12711C"),
+          ylab = "Score de narcissisme (DDS)",
+          title = "Score de narcissisme (DDS) selon la condition.")
+```
+
+### f) Niveau d'arousal (ADCL)
 
 ```{r graph-cond-arousal}
 ggboxplot(data, x = "Condition", y = "Excitation_ADCL", color = "Sexe",
