@@ -40,15 +40,19 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 💡 *Ajouter `{CRAN}` après les \`\`\`*
 
     tinytex::install_tinytex()
+    install.packages("car")
     install.packages("corrplot")
     install.packages("dplyr")
     install.packages("expss")
+    install.packages("flextable")
     install.packages("ggpubr")
     install.packages("gtsummary")  
     install.packages("Hmisc")
     install.packages("kableExtra")
     install.packages("knitr")
     install.packages("labelled")
+    install.packages("lme4")
+    install.packages("lmerTest")
     install.packages("magrittr")
     install.packages("psych")
     install.packages("purrr")
@@ -63,15 +67,19 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 On déclare les librairies qu'on utilise et permettent d'appeler des fonctions particulières.
 
 ```{r libraries}
+library(car)
 library(corrplot)
 library(dplyr)
 library(expss)
+library(flextable)
 library(ggpubr)
 library(gtsummary)  
 library(Hmisc)
 library(kableExtra)
 library(knitr)
 library(labelled)
+library(lme4)
+library(lmerTest)
 library(magrittr)
 library(psych)
 library(purrr)
@@ -162,12 +170,12 @@ var_label(data) <- list(Sexe = "Sexe",
                          
                          Machiavelisme_DDS = "Score de machiavélisme (DDS)",
                          Psychopathie_DDS = "Score de psychopathie (DDS)",
-                         Narcissisme_DDS = "Score de machiavélisme (DDS)",
+                         Narcissisme_DDS = "Score de narcissisme (DDS)",
                          Total_DDS = "Score total à la DDS (Triade Sombre)",
                          
                          R_QI = "Score de réponses à la QPM38 (Matrices de Raven)",
                          QPM38_QI = "Score à la QPM38 (Matrices de Raven)",
-                         Centile_QI = "Score à la QPM38 (Matrices de Raven)",
+                         Centile_QI = "Centile à la QPM38 (Matrices de Raven)",
                          
                          Activation_Generale_Trait_ADCL = "Score d'activation générale trait (ADCL)",
                          Serenite_Trait_ADCL = "Niveau de sérénité trait (ADCL)",
@@ -355,7 +363,7 @@ dt_Tests_var %>%
 Suppression des données aberrantes
 
 ```{r outliers}
-datao <- data[,5:55] # Copie du dataframe
+datao <- data[,5:53] # Copie du dataframe
 datao <- copy_labels(datao, data) # Copie des étiquettes
 
 # Fonction de repérage des valeurs aberrantes
@@ -1352,7 +1360,7 @@ Analyse de la Variance du modèle
 summary.aov(modele_psycho_best) # Résumé
 ```
 
-### f) Narcissisme (DDS)
+### f) Score de narcissisme (DDS)
 
 #### Modèle minimal
 
@@ -1813,7 +1821,6 @@ tbl_regression(modele_buste2_best,
                          include = c(adj.r.squared, r.squared,AIC, p.value, sigma)) # Statistiques du modèle
 ```
 
-
 ### k) Nombre de pas entre l'arrêt 2 et la cible
 
 #### Recherche du meilleur modèle
@@ -1849,6 +1856,83 @@ tbl_regression(modele_pasp2cible_best,
                          pattern = "{p.value}{stars}") %>% # Niveau de significativité
   add_glance_source_note(label = list(sigma ~ "\U03C3", adj.r.squared ~ "R\xc2\xb2 ajusté",  r.squared ~ "R\xc2\xb2", p.value ~ "p-valeur"),
                          include = c(adj.r.squared, r.squared,AIC, p.value, sigma)) # Statistiques du modèle
+```
+
+## 8. Régressions mixtes
+
+#### Précisions
+
+En plus des effets fixes étudiés dans les modèles de régression linéaire, les régressions mixtes prennent en considération les effets aléatoires, afin d'observer les corrélations entre les variables.
+
+Ce type de régression produit :
+
+-   Les p-valeurs des effets fixes.
+
+-   La valeur W du test de Shapiro-Wilk (test de Normalité) et la p-valeur associée (on rejette la normalité quand la p-valeur \> .05, donc non significative).
+
+#### Préparation des données
+
+```{r lmer-prep}
+datam <- datag[,-c(32:34,40:46,48:55)] # Variables pertinentes (mémoire)
+datam <- cbind.data.frame(data$Code, datam) # Ajout du code sujet
+names(datam)[names(datam) == 'data$Code'] <- 'Code' # Renommer la colonne du code sujet
+datam$Code <-  factor(datam$Code) # Factorisation 
+datam$Condition <- factor(datam$Condition, labels = c("Agression", "Téléphone") ) # Factorisation
+datam$Sexe <- factor(datam$Sexe, # Factorisation
+                    labels = c("Féminin", "Masculin"))
+datam <- datam %>% relocate(Code, .after = Excitation_ADCL) # Déplacement à la fin du tableau
+datam <- datam %>% relocate(Condition, .after = Excitation_ADCL) # Déplacement à la fin du tableau
+datam <- datam %>% relocate(Sexe, .after = Excitation_ADCL) # Déplacement à la fin du tableau
+datam <- datam %>% relocate(Age, .after = Excitation_ADCL) # Déplacement à la fin du tableau
+```
+
+#### Tous les modèles
+
+```{r lmer-boucle-mod}
+lmer_all_mod <- list() # Création d'une liste pour stocker les modèles
+for (i in 1:34) # On tourne sur les 34 premières colonnes (toutes les variables étudiées)
+{
+  var <- (datam)[,i] # Variable intermédiaire
+  lmer_all_mod$names[[i]] <- colnames(datam)[i] # Nom des colonnes
+  mod_REML <- lmer(var ~ Sexe * Age + (1|Condition), data = datam) # Modèles
+  lmer_all_mod$shap[[i]] = shapiro.test(summary(update(mod_REML, REML = FALSE))$residuals) # Résidus du test de Shapiro
+  lmer_all_mod$pval[[i]] = Anova(update(mod_REML, REML = FALSE), type = "III")  # P-valeurs de l'Anova
+} 
+```
+
+#### Résultats
+
+Stockage
+
+```{r lmer-boucle-res-mod}
+lmer_results <- function(lmer_all_mod){ # Fonction d'affichage
+    list_model <- attributes(lmer_all_mod$pval[[1]])$row.names # Nom des colonnes
+    tmp <- matrix(0, ncol = length(list_model) + 2, nrow = length(lmer_all_mod$names) ,dimnames = list(lmer_all_mod$names, c(paste(list_model[(seq(list_model))], "(p-val)"),"W", "p-val (W)"))) # Valeurs à afficher
+    for(i in seq(length(lmer_all_mod$pval))){
+        for (j in seq(length(list_model))){
+            tmp[i,j] <- lmer_all_mod$pval[[i]][[3]][j] # P-valeurs des effets fixes
+        }
+         tmp[i,j+1] <- lmer_all_mod$shap[[i]]$statistic # Statistique de test de Shapiro
+         tmp[i,j+2] <- lmer_all_mod$shap[[i]]$p.value # P-valeurs du test de Shapiro
+    }
+    return(tmp)
+    assign(paste0(lmer_all_mod,"lmer_results"),as.data.frame(tmp), envir = parent.frame()) # Tableau
+}
+```
+
+Affichage
+
+```{r lmer-boucle-print-mod}
+#labels_dt = data.frame(var_label(datam[1:32], unlist = TRUE))
+#labels_list = list(labels_dt[c(1:30),2])
+lmer_pval <- data.frame(round(lmer_results(lmer_all_mod),5)) # Appliquer la fonction à nos modèles et arrondir les valeurs
+lmer_pval %>%
+  kbl(caption = "<b>Régressions mixtes.</b>", # Légende
+      col.names = c("p-valeur Constante", "p-valeur Sexe", "p-valeur Age", "p-valeur Sexe * Age", "W", "p-valeur W")) %>% # Nom des colonnes
+      #row.names = c("Nombre de mouvements du haut du visage à l'arrêt 1", "Nombre de mouvements du bas du visage à l'arrêt 1", "Nombre de clignements des yeux à l'arrêt 1","Nombre de mouvements des yeux à l'arrêt 1", "Nombre de mouvements de la tête à l'arrêt 1", "Nombre de mouvements du buste à l'arrêt 1","Nombre de mouvements des bras à l'arrêt 1", "Nombre de mouvements des mains à l'arrêt 1", "Nombre de mouvements des jambes à l'arrêt 1","Nombre de mouvements des pieds à l'arrêt 1", "Nombre de self-adaptators à l'arrêt 1","Nombre de pas entre l'arrêt 1 et l'arrêt 2","Temps entre l'arrêt 1 et l'arrêt 2","Nombre de mouvements du haut du visage à l'arrêt 2","Nombre de mouvements du bas du visage à l'arrêt 2","Nombre de clignements des yeux à l'arrêt 2","Nombre de mouvements des yeux à l'arrêt 2","Nombre de mouvements de la tête à l'arrêt 2","Nombre de mouvements du buste à l'arrêt 2","Nombre de mouvements des bras à l'arrêt 2","Nombre de mouvements des mains à l'arrêt 2", "Nombre de mouvements des jambes à l'arrêt 2","Nombre de mouvements des pieds à l'arrêt 2", "Nombre de self-adaptators à l'arrêt 2", "Nombre de pas entre l'arrêt 2 et la cible","Temps entre l'arrêt 2 et la cible","Score d'empathie affective (BES)","Score d'empathie cognitive (BES)","Score de machiavélisme (DDS)","Score de psychopathie (DDS)", "Score de narcissisme (DDS)", "Score à la QPM38 (Matrices de Raven)","Centile à la QPM38 (Matrices de Raven)", "Niveau d'arousal (ADCL)")) %>% # Nom des colonnes
+  kable_material(full_width = F) %>% # Taille et style
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>% # Options de surlignage et rayures
+  scroll_box(width = "100%", height = "300px") # Barres de défilement
 ```
 
 # V -- Graphiques
