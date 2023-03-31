@@ -35,10 +35,11 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 
 ### b) Installation
 
-⚠️ Nécessaire uniquement la première fois qu'on exécute le script.
+⚠️ Nécessaire uniquement la première fois qu'on exécute le script (sauf si on a déjà installé ces librairies).
 
-💡 *Ajouter `{CRAN}` après les \`\`\`*
+💡 *Ajouter CRAN entre les {}*
 
+```{}
     tinytex::install_tinytex()
     install.packages("agricolae") 
     install.packages("car")
@@ -54,6 +55,7 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
     install.packages("labelled")
     install.packages("lme4")
     install.packages("lmerTest")
+    install.packages("lsr")
     install.packages("magrittr")
     install.packages("psy")
     install.packages("psych")
@@ -62,7 +64,9 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
     install.packages("skimr")
     install.packages("sjlabelled")
     install.packages("sjPlot")
+    install.packages("sjstats")
     install.packages("tidyverse")
+```
 
 ### c) Déclaration
 
@@ -83,6 +87,7 @@ library(knitr)
 library(labelled)
 library(lme4)
 library(lmerTest)
+library(lsr)
 library(magrittr)
 library(psy)
 library(psych)
@@ -91,6 +96,7 @@ library(RCurl)
 library(skimr)
 library(sjlabelled)
 library(sjPlot)
+library(sjstats)
 library(tidyverse)
 ```
 
@@ -108,9 +114,8 @@ library(tidyverse)
 
 💡 *Si jamais il importe les données en un gros bloc au lieu d'un tableau, remplacer le sep = ";" par sep = "," (dépend de la version d'Excel et comment il exporte en .csv).*
 
-```{r file}
-git_file <- 'https://raw.githubusercontent.com/astridgcn/R-Behavioral-Analysis/main/Comptage.csv'
-data = read.csv(file = git_file, sep = ";", check.names = F, header = TRUE) 
+```{r data}
+data = read.csv(file = 'https://raw.githubusercontent.com/astridgcn/R-Behavioral-Analysis/main/Comptage.csv', sep = ";", check.names = F, header = TRUE) 
 ```
 
 ## 4. Préparation des données
@@ -146,7 +151,7 @@ var_label(data) <- list(Sexe = "Sexe",
                          Pieds = "Nombre de mouvements des pieds à l'arrêt 1",
                          Self_Adaptators = "Nombre de self-adaptators à l'arrêt 1",
                          Pas_P1_P2 = "Nombre de pas entre l'arrêt 1 et l'arrêt 2",
-                         Temps_P1_P2 = "Temps entre l'arrêt 1 et l'arrêt 2",
+                         Temps_P1_P2 = "Temps entre l'arrêt 1 et l'arrêt 2 (en secondes)",
                          Vitesse_P1_P2 = "Vitesse entre l'arrêt 1 et l'arrêt 2",
                            
                          Haut_visage2 = "Nombre de mouvements du haut du visage à l'arrêt 2",
@@ -161,7 +166,7 @@ var_label(data) <- list(Sexe = "Sexe",
                          Pieds2 = "Nombre de mouvements des pieds à l'arrêt 2",
                          Self_Adaptators2 = "Nombre de self-adaptators à l'arrêt 2",
                          Pas_P2_Cible = "Nombre de pas entre l'arrêt 2 et la cible",
-                         Temps_P2_Cible = "Temps entre l'arrêt 2 et la cible",
+                         Temps_P2_Cible = "Temps entre l'arrêt 2 et la cible (en secondes)",
                          Vitesse_P2_Cible = "Vitesse entre l'arrêt 2 et la cible",
                          
                          EAFF_BES = "Score d'empathie affective (BES)",
@@ -265,7 +270,8 @@ dt_Sum_data_sex%>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>% # Options de surlignage et rayures
   scroll_box(width = "100%", height = "400px") # Barres de défilement
 ```
-Résumé statistique des données selon la <i>Condition</i> et par arrêt
+
+#### Résumé statistique des données selon la <i>Condition</i> et par arrêt
 
 ```{r mutate-arret}
 dt_Info <- data[,2:4] # Infos
@@ -274,21 +280,44 @@ colnames(dt_Mouv_Arret1) <- c("Nombre de mouvements à l'arrêt 1") # Nom ligne
 dt_Pas1 <- data[,16:17] # Pas et vitesse 1
 dt_Mouv_Arret2 <- data.frame(rowSums(data[,19:29])) # Mouvements arrêt 2
 colnames(dt_Mouv_Arret2) <- c("Nombre de mouvements à l'arrêt 2") # Nom ligne
+dt_Mouv1 <- data[,5:15]
+dt_Mouv2 <- data[,19:29]
 dt_Pas2 <- data[,30:31] # Pas et vitesse 1
-dt_BES <- data[,32:38] # BES
-dt_DDS <- data[,39:42] # DDS
-dt_QI <- data[,44:45] # QI
-dt_Arousal <- data[,53] # Arousal
-
-dt_Sum_data <- do.call("cbind", list(dt_Info, dt_Mouv_Arret1, dt_Pas1, dt_Mouv_Arret2, dt_Pas2, dt_BES, dt_DDS, dt_QI, dt_Arousal))
-rm(dt_Info, dt_Mouv_Arret1, dt_Pas1, dt_Mouv_Arret2, dt_Pas2, dt_BES, dt_DDS, dt_QI, dt_Arousal) 
+dt_BES <- data[,33:38] # BES
+dt_DDS <- data[,c(39:42)] # DDS 
+dt_Arousal <- data.frame(as.double(data[,53])) # Arousal
+colnames(dt_Arousal) <- c("Niveau d'arousal")
+dt_Sum_data <- do.call("cbind", list(dt_Info, dt_Mouv1, dt_Pas1, dt_Mouv2, dt_Pas2, dt_BES, dt_DDS, dt_Arousal))
+dt_BES <- data[,c(33:34,36,38)] # BES
+dt_Sum_data_mem <- do.call("cbind", list(dt_Info, dt_Mouv_Arret1, dt_Pas1, dt_Mouv_Arret2, dt_Pas2, dt_BES, dt_DDS, dt_Arousal))
+rm(dt_Info, dt_Mouv_Arret1, dt_Pas1, dt_Mouv_Arret2, dt_Pas2, dt_BES, dt_DDS, dt_Arousal) 
 ```
 
 ```{r summary-data-cond-arret}
 dt_Sum_data %>%
   tbl_summary(
     by = Condition,
-    statistic = list(all_continuous() ~ "{mean} ({sd})"),
+    type = c(Haut_visage = "continuous", Bas_visage = "continuous", Bras = "continuous", Haut_visage2 = "continuous", Bras2 = "continuous", Pieds2 = "continuous", `Niveau d'arousal` = "continuous"),
+    statistic = list(
+      all_continuous() ~ "{mean} ({sd})",
+      all_categorical() ~ "{n} / {N} ({p}%)"),
+    missing = "no"
+  ) %>%
+  add_overall(col_label = "**Total**<br>N = {n}") %>% # Ajout et légende du total
+  modify_caption("<center><b>Résumé statistique des données selon la <i>Condition</i> et par arrêt.</b></center>") %>% # Légende
+  modify_header(label = "**Variable**") %>% # Entête
+  modify_footnote(all_stat_cols() ~ "Moyenne (Écart-Type)") # Abbréviations
+```
+Résumé statistique concis
+
+```{r summary-data-cond-arret-mem}
+dt_Sum_data_mem %>%
+  tbl_summary(
+    by = Condition,
+    type = c(`Niveau d'arousal` = "continuous"),
+    statistic = list(
+      all_continuous() ~ "{mean} ({sd})",
+      all_categorical() ~ "{n} / {N} ({p}%)"),
     missing = "no"
   ) %>%
   add_overall(col_label = "**Total**<br>N = {n}") %>% # Ajout et légende du total
@@ -296,6 +325,7 @@ dt_Sum_data %>%
   modify_header(label = "**Variable**") %>% # Entête
   modify_footnote(all_stat_cols() ~ "Moyenne (Écart-Type)") # Abbréviations
 ```
+
  
 
 💡 *Résume les statistiques de base de chaque variable :*
@@ -672,7 +702,7 @@ Dans tous les cas, d'après le théorème central limite, l'échantillon est ass
 
 ```{r aov-shapiro, results = 'hide'}
 set.seed(321) # pour que le code soit reproductible avec les mêmes valeurs
-apply(datag,2, shapiro.test) # 2 pour préciser qu'on applique aux colonnes
+apply(datag, 2, shapiro.test) # 2 pour préciser qu'on applique aux colonnes
 ```
 
 ### b) Test d'homoscédasticité (Levene)
@@ -686,7 +716,7 @@ leveneTest(EAFF_BES ~ Condition, data = data)
 leveneTest(ContSc_BES ~ Condition, data = data)
 ```
 
-### c) Analyse de la Variannce
+### c) Analyse de la Variance
 
 L'ANOVA nous permet de comparer les moyennes de plusieurs groupes. Elle s'effectue sur des échantillons gaussiens ou considérés comme gaussiens (ou normalisés).
 
@@ -716,12 +746,30 @@ for (i in 2:ncol(datag)) {
 }
 ```
 
+### d) Test de différence de moyennes (Newman-Keuls)
+
+Ce test permet d'identifier les moyennes intergroupes significatives. On l'utilise généralement comme test post-hoc sur les ANOVA significatives.
+
+### e) Test de Welch (t-test)
+
+Pour les ANOVA significatives, on effectue un t-test post-hoc afin de comparer les moyennes sans hypothèse (d'égalité) préalable. Dans le cas de deux groupes à variances inégales, on utilise Welch et non Student.
+
+### f) Ajustement de Bonferroni 
+
+Cette méthode est aussi un test dit post-hoc, permet d'ajuster les seuils de significativité des ANOVA significatives.
+
 #### Afficher les ANOVA significatives
 
 ```{r best-aov}
-#summary(aov(Jambes2 ~ Condition, data = datag))
-#summary(aov(EAFF_BES ~ Condition, data = datag))
-#summary(aov(ContSc_BES ~ Condition, data = datag))
+summary(aov(Jambes2 ~ Condition, data = datag))
+```
+
+```{r best-aov2}
+summary(aov(EAFF_BES ~ Condition, data = datag))
+```
+
+```{r best-aov3}
+summary(aov(ContSc_BES ~ Condition, data = datag))
 ```
 
 Mouvements des jambes à l'arrêt 2
@@ -744,7 +792,14 @@ data %>%
                          hide_p = FALSE,
                          pattern = "{p.value}{stars}") # Niveau de significativité
 
-print(SNK.test(aov(Jambes2 ~ Condition, data = datag),"Condition", group=TRUE)) # Test de Newman-Keuls
+print(SNK.test(aov(Jambes2 ~ Condition, data = datag),"Condition", group = TRUE)) # Test de Newman-Keuls
+print(t.test(Jambes2 ~ Condition, data = data, alternative = "two.sided")) # Test de Welch
+print(pairwise.t.test(data$Jambes2, data$Condition, p.adjust.method = "bonferroni")) # Ajustement de Bonferroni
+```
+
+Taille d'effet
+```{r aov-jambes2-eta}
+etaSquared(aov(Jambes2 ~ Condition, data = data))
 ```
 
 Score d'empathie affective (BES)
@@ -768,7 +823,14 @@ score d'empathie affective (BES).</b></center>") %>% # Légende
                          hide_p = FALSE,
                          pattern = "{p.value}{stars}") # Niveau de significativité
 
-print(SNK.test(aov(EAFF_BES ~ Condition, data = datag),"Condition", group=TRUE)) # Test de Newman-Keuls
+print(SNK.test(aov(EAFF_BES ~ Condition, data = data),"Condition", group = TRUE)) # Test de Newman-Keuls
+print(t.test(EAFF_BES ~ Condition, data = data, alternative = "two.sided")) # Test de Welch
+print(pairwise.t.test(data$EAFF_BES, data$Condition, p.adjust.method = "bonferroni")) # Ajustement de Bonferroni
+```
+
+Taille d'effet
+```{r aov-eaff-eta}
+etaSquared(aov(EAFF_BES ~ Condition, data = data))
 ```
 
 Score de contagion émotionnelle (BES)
@@ -791,7 +853,41 @@ data %>%
                          hide_p = FALSE,
                          pattern = "{p.value}{stars}") # Niveau de significativité
 
-print(SNK.test(aov(ContSc_BES ~ Condition, data = datag),"Condition", group=TRUE)) # Test de Newman-Keuls
+print(SNK.test(aov(ContSc_BES ~ Condition, data = data),"Condition", group = TRUE)) # Test de Newman-Keuls
+print(t.test(ContSc_BES ~ Condition, data = data, alternative = "two.sided")) # Test de Welch
+print(pairwise.t.test(data$ContSc_BES, data$Condition, p.adjust.method = "bonferroni")) # Ajustement de Bonferroni
+```
+
+Taille d'effet
+```{r aov-cont-eta}
+etaSquared(aov(ContSc_BES ~ Condition, data = data))
+```
+
+## 4. Test de Wilcoxon
+
+Ce test permet de comparer des moyennes sans vérifier la normalité ou l'homoscédasticité. On l'utilise pour comparer les moyennes entre les 2 conditions qui semblent différentes.
+
+```{r wilcox-haut-vis}
+wilcox.test(data$Haut_visage[data$Condition == "Agression"], data$Haut_visage[data$Condition == "Téléphone"])
+```
+
+```{r wilcox-pas1}
+wilcox.test(data$Pas_P1_P2[data$Condition == "Agression"], data$Pas_P1_P2[data$Condition == "Téléphone"])
+```
+```{r wilcox-jambes2}
+wilcox.test(data$Jambes2[data$Condition == "Agression"], data$Jambes2[data$Condition == "Téléphone"])
+```
+
+```{r wilcox-pas2}
+wilcox.test(data$Pas_P2_Cible[data$Condition == "Agression"], data$Pas_P2_Cible[data$Condition == "Téléphone"])
+```
+
+```{r wilcox-eaff-bes}
+wilcox.test(data$EAFF_BES[data$Condition == "Agression"], data$EAFF_BES[data$Condition == "Téléphone"])
+```
+
+```{r wilcox-tot-bes}
+wilcox.test(data$Total_BES[data$Condition == "Agression"], data$Total_BES[data$Condition == "Téléphone"])
 ```
 
 ## 4. Alpha de Cronbach
@@ -800,24 +896,41 @@ print(SNK.test(aov(ContSc_BES ~ Condition, data = datag),"Condition", group=TRUE
 
 L'$\alpha$ (alpha) de Cronbach vérifie la cohérence (ou l'homogénéité) d'une échelle psychométrique. Autrement dit, à quel point tous les éléments convergent vers la même intensité de réponse. L'alpha de Cronbach se situe entre 0 et 1. Plus il tend vers 1, plus le questionnaire est homogène.
 
-### b) Calculs
+### b) Données
+
+```{r data-cron}
+cron = read.csv(file = 'https://raw.githubusercontent.com/astridgcn/R-Behavioral-Analysis/main/Cronbach.csv', sep = ";", check.names = F, header = TRUE) 
+```
+
+### c) Calculs
 
 #### Échelle d'Empathie Basique (BES)
 
 ```{r cron-bes}
-cronbach(data[,33:38])
+print("Alpha de Cronbach pour l'empathie affective (BES)")
+cronbach(cron[c("B01R", "B02", "B04R", "B05", "B07", "B08", "B11", "B13R", "B15", "B17", "B18R")])
+print("Alpha de Cronbach pour l'empathie cognitive (BES)")
+cronbach(cron[c("B03", "B06R", "B09", "B10", "B12", "B14", "B16", "B19R", "B20R")])
+print("Alpha de Cronbach pour la contagion émotionnelle (BES)")
+cronbach(cron[c("B02", "B04", "B05", "B11", "B15", "B17")])
 ```
 
 #### Triade Sombre (DDS)
 
 ```{r cron-dds}
-cronbach(data[,39:42])
+print("Alpha de Cronbach pour le machiavélisme (DDS)")
+cronbach(cron[c("D01", "D02", "D03", "D04")])
+print("Alpha de Cronbach pour le narcissisme (DDS)")
+cronbach(cron[c("D05", "D06", "D07", "D08")])
+print("Alpha de Cronbach pour la psychopathie (DDS)")
+cronbach(cron[c("D09", "D10", "D11", "D12")])
 ```
 
 #### Check List d'Activation / Désactivation (ADCL)
 
 ```{r cron-arous}
-cronbach(data[,46:53])
+print("Alpha de Cronbach pour l'arousal (AD ACL)")
+cronbach(cron[c("E09", "E17", "E26")])
 ```
 
 #### Inventaire des Cinq grands Facteurs de Personnalité (BFI)
@@ -886,7 +999,7 @@ Autres critères pertinents à l'étude des modèles :
 ## 2. Tous les modèles possibles pour toutes les variables
 
 ```{r all-mod, results = 'hide'}
- # Création de la liste de modèles avec +30% de R2 ajusté
+ # Création de la liste de modèles avec +20% de R2 ajusté
 best_models = list()
 
 # Incrémentation
@@ -2201,7 +2314,7 @@ Ce type de régression produit :
 
 #### Préparation des données
 
-```{r lmer-prep}
+```{r lmer-prep, results = 'hide'}
 datam <- datag[,-c(32:34,40:46,48:55)] # Variables pertinentes (mémoire)
 datam <- cbind.data.frame(data$Code, datam) # Ajout du code sujet
 names(datam)[names(datam) == 'data$Code'] <- 'Code' # Renommer la colonne du code sujet
