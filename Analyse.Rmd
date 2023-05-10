@@ -2126,6 +2126,12 @@ tbl_regression(modele_jambes1_best,
   add_glance_source_note(label = list(sigma ~ "\U03C3", adj.r.squared ~ "R\xc2\xb2 ajusté",  r.squared ~ "R\xc2\xb2", p.value ~ "p-valeur"),
                          include = c(adj.r.squared, r.squared,AIC, p.value, sigma)) # Statistiques du modèle
 ```
+#### Normalité des résidus 
+```{r jambes1-resi}
+shapiro.test(modele_jambes1_best$residuals)
+```
+
+La p-valeur est non-significative (0.07739) : on ne rejette pas H0, les résidus sont gaussiens et respectent les hypothèses du modèle linéaire multiple.
 
 ### h) Temps entre l'arrêt 1 et l'arrêt 2
 
@@ -2261,6 +2267,13 @@ tbl_regression(modele_jambes2_best,
   add_glance_source_note(label = list(sigma ~ "\U03C3", adj.r.squared ~ "R\xc2\xb2 ajusté",  r.squared ~ "R\xc2\xb2", p.value ~ "p-valeur"),
                          include = c(adj.r.squared, r.squared,AIC, p.value, sigma)) # Statistiques du modèle
 ```
+
+#### Normalité des résidus 
+```{r jambes2-resi}
+shapiro.test(modele_jambes2_best$residuals)
+```
+
+La p-valeur est non-significative (0.01899) : on rejette H0, les résidus ne sont pas gaussiens.
 
 ### l) Nombre de pas entre l'arrêt 2 et la cible
 
