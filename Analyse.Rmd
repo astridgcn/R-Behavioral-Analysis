@@ -1269,6 +1269,14 @@ tbl_regression(modele_sel_best,
                          include = c(adj.r.squared, r.squared,AIC, p.value, sigma)) # Statistiques du modèle
 ```
 
+#### Normalité des résidus 
+```{r sel-best-resi}
+shapiro.test(modele_sel_best$residuals)
+```
+
+La p-valeur est non-significative (0.1409) : on ne rejette pas H0, les résidus sont gaussiens et respectent les hypothèses du modèle linéaire multiple.
+
+
 Analyse de la Variance du modèle
 
 ```{r aov-sel-best}
@@ -1400,6 +1408,12 @@ tbl_regression(modele_tests_best,
   add_glance_source_note(label = list(sigma ~ "\U03C3", adj.r.squared ~ "R\xc2\xb2 ajusté",  r.squared ~ "R\xc2\xb2", p.value ~ "p-valeur"),
                          include = c(adj.r.squared, r.squared,AIC, p.value, sigma)) # Statistiques du modèle
 ```
+#### Normalité des résidus 
+```{r -resi}
+shapiro.test(modele_tests_best$residuals)
+```
+
+La p-valeur est non-significative (0.04849) : on rejette H0 (à très peu), les résidus ne sont pas gaussiens.
 
 Analyse de la Variance du modèle
 
